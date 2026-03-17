@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -59,6 +60,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   bool _isLoading = false;
   bool _isUppercase = true;
   final ImagePicker _picker = ImagePicker();
+  DateTime? _lastBackPressTime;
 
   String _scrambleWord(String word) {
     if (word.length <= 1) return word;
@@ -518,8 +520,29 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Press back again to exit'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text(
           '✨ Kids Scramble Quest ✨',
           style: TextStyle(
@@ -581,8 +604,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Center(
