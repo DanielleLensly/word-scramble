@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -145,13 +146,22 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               return Card(
                 elevation: 2,
                 child: ListTile(
-                  leading: const Icon(Icons.restore, color: Colors.indigo),
+                  leading: const Icon(Icons.history, color: Colors.indigo),
                   title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   subtitle: Text(wordsList.take(6).join(', ') + (wordsList.length > 6 ? '...' : ''), maxLines: 2),
-                  onTap: () {
-                    _addWordsToList(wordsList);
-                    Navigator.pop(context);
-                  },
+                  trailing: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    onPressed: () {
+                      _addWordsToList(wordsList);
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Add to List'),
+                  ),
                 ),
               );
             },
@@ -302,9 +312,40 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   void _clearWords() {
-    setState(() {
-      _wordPairs.clear();
-    });
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear List?'),
+        content: const Text('Are you sure you want to remove all words from the current list? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () {
+              setState(() {
+                _wordPairs.clear();
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchPrivacyPolicy() async {
+    final Uri url = Uri.parse('https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0');
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Privacy Policy link')),
+        );
+      }
+    }
   }
 
   void _reshuffleScrambled(int index) {
@@ -448,6 +489,11 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                 activeTrackColor: Colors.pinkAccent,
               ),
             ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            onPressed: _launchPrivacyPolicy,
+            tooltip: 'Privacy Policy',
           ),
           if (_wordPairs.isNotEmpty)
             IconButton(
@@ -629,7 +675,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                         _formatScrambled(pair.scrambled),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 16,
                           color: Colors.blueAccent,
                         ),
                       ),

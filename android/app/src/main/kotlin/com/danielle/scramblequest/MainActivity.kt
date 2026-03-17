@@ -1,4 +1,4 @@
-package com.example.scramble
+package com.danielle.scramblequest
 
 import io.flutter.embedding.android.FlutterActivity
 
