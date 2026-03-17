@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
@@ -944,44 +943,62 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
             const Text('Are these words correct? You can edit or remove them.'),
             const SizedBox(height: 16),
             Expanded(
-              child: _controllers.isEmpty
-                  ? const Center(
-                      child: Text('No words found. Try a clearer photo.'),
-                    )
-                  : ListView.builder(
-                      itemCount: _controllers.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _controllers[index],
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: _controllers.isEmpty
+                        ? const Center(
+                            child: Text('No words found. Try a clearer photo.'),
+                          )
+                        : ListView.builder(
+                            itemCount: _controllers.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _controllers[index],
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          hintText: "Word ${index + 1}",
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _controllers[index].dispose();
+                                          _controllers.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _controllers.removeAt(index);
-                                  });
-                                },
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _controllers.add(TextEditingController());
+                      });
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Missing Word'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -993,10 +1010,14 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            List<String> finalWords = _controllers
-                .map((c) => c.text)
-                .where((t) => t.trim().isNotEmpty)
-                .toList();
+            List<String> finalWords = [];
+            for (var c in _controllers) {
+              String text = c.text.trim();
+              if (text.isNotEmpty) {
+                // Split by spaces or newlines in case user put 2 words in one box
+                finalWords.addAll(text.split(RegExp(r'\s+')));
+              }
+            }
             widget.onConfirmed(finalWords);
             Navigator.pop(context);
           },
