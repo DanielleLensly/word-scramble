@@ -145,22 +145,38 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               final displayDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
               return Card(
                 elevation: 2,
-                child: ListTile(
-                  leading: const Icon(Icons.history, color: Colors.indigo),
-                  title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text(wordsList.take(6).join(', ') + (wordsList.length > 6 ? '...' : ''), maxLines: 2),
-                  trailing: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                    ),
-                    onPressed: () {
-                      _addWordsToList(wordsList);
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Add to List'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.history, color: Colors.indigo),
+                        title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text(wordsList.take(6).join(', ') + (wordsList.length > 6 ? '...' : ''), maxLines: 2),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () {
+                              _addWordsToList(wordsList);
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(Icons.add_circle_outline, size: 18),
+                            label: const Text('Add to List'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
