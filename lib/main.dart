@@ -145,39 +145,15 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               final displayDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
               return Card(
                 elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.history, color: Colors.indigo),
-                        title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        subtitle: Text(wordsList.take(6).join(', ') + (wordsList.length > 6 ? '...' : ''), maxLines: 2),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed: () {
-                              _addWordsToList(wordsList);
-                              Navigator.pop(context);
-                            },
-                            icon: const Icon(Icons.add_circle_outline, size: 18),
-                            label: const Text('Add to List'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: ListTile(
+                  leading: const Icon(Icons.history, color: Colors.indigo),
+                  title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: Text("${wordsList.length} words: ${wordsList.take(4).join(', ')}..."),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showHistoryDetailDialog(wordsList, displayDate);
+                  },
                 ),
               );
             },
@@ -187,6 +163,72 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHistoryDetailDialog(List<String> words, String dateLabel) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Words from This Upload', style: TextStyle(fontSize: 18)),
+            Text(dateLabel, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 350,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: words.length,
+                  itemBuilder: (context, index) => ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Colors.indigo.shade50,
+                      child: Text("${index + 1}", style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+                    ),
+                    title: Text(words[index]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    _addWordsToList(words);
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.add_circle),
+                  label: const Text('Add All to List', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showPastUploadsDialog(); // Go back to history list
+            },
+            child: const Text('Back to History'),
           ),
         ],
       ),
