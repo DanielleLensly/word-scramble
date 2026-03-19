@@ -8,11 +8,35 @@ import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 import 'package:docx_to_text/docx_to_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+
+const Map<String, List<String>> SIGHT_WORD_LISTS = {
+  'Dolch Pre-Primer': [
+    'a', 'and', 'away', 'big', 'blue', 'can', 'come', 'down', 'find', 'for',
+    'funny', 'go', 'help', 'here', 'I', 'in', 'is', 'it', 'jump', 'little',
+    'look', 'make', 'me', 'my', 'not', 'one', 'play', 'red', 'run', 'said',
+    'see', 'the', 'three', 'to', 'two', 'up', 'we', 'where', 'yellow', 'you'
+  ],
+  'Dolch Primer': [
+    'all', 'am', 'are', 'at', 'ate', 'be', 'black', 'brown', 'but', 'came',
+    'did', 'do', 'eat', 'four', 'get', 'good', 'have', 'he', 'into', 'like',
+    'must', 'new', 'no', 'now', 'on', 'our', 'out', 'please', 'pretty', 'ran',
+    'ride', 'saw', 'say', 'she', 'so', 'soon', 'that', 'there', 'they', 'this',
+    'too', 'under', 'want', 'was', 'well', 'went', 'what', 'white', 'who', 'will',
+    'with', 'yes'
+  ],
+  'Dolch 1st Grade': [
+    'after', 'again', 'an', 'any', 'as', 'ask', 'by', 'could', 'every', 'fly',
+    'from', 'give', 'going', 'had', 'has', 'her', 'him', 'his', 'how', 'just',
+    'know', 'let', 'live', 'may', 'of', 'old', 'once', 'open', 'over', 'put',
+    'round', 'some', 'stop', 'take', 'thank', 'them', 'then', 'think', 'walk', 'were', 'when'
+  ],
+};
+
 
 void main() {
   runApp(const WordScramblerApp());
@@ -60,6 +84,25 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   bool _isUppercase = true;
   final ImagePicker _picker = ImagePicker();
   DateTime? _lastBackPressTime;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   String _scrambleWord(String word) {
     if (word.length <= 1) return word;
@@ -76,19 +119,34 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   void _addWordsToList(List<String> words) {
+    final List<String> duplicates = [];
     setState(() {
       for (var word in words) {
         final cleaned = word.trim();
-        if (cleaned.length >= 2 &&
-            !_wordPairs.any(
-              (p) => p.original.toLowerCase() == cleaned.toLowerCase(),
-            )) {
-          _wordPairs.add(
-            WordPair(original: cleaned, scrambled: _scrambleWord(cleaned)),
-          );
+        if (cleaned.length >= 2) {
+          if (_wordPairs.any((p) => p.original.toLowerCase() == cleaned.toLowerCase())) {
+            duplicates.add(cleaned);
+          } else {
+            _wordPairs.add(
+              WordPair(original: cleaned, scrambled: _scrambleWord(cleaned)),
+            );
+          }
         }
       }
     });
+    if (duplicates.isNotEmpty && mounted) {
+      final msg = duplicates.length == 1
+          ? '"${duplicates.first}" is already in the list.'
+          : '${duplicates.length} words are already in the list: ${duplicates.join(', ')}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.orange.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    _scrollToBottom();
   }
 
   Future<void> _saveUploadToHistory(List<String> words) async {
@@ -416,33 +474,104 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     });
   }
 
-  void _showAddManualWordDialog() {
-    final controller = TextEditingController();
+  void _showSightWordListsDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Word Manually'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Enter spelling word"),
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text('Sight Word Lists'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: SIGHT_WORD_LISTS.keys.map((listName) {
+              return Card(
+                elevation: 1,
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  title: Text(listName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text("${SIGHT_WORD_LISTS[listName]!.length} words"),
+                  trailing: const Icon(Icons.add_circle_outline, color: Colors.pink),
+                  onTap: () {
+                    _addWordsToList(SIGHT_WORD_LISTS[listName]!);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Added $listName words!')),
+                    );
+                  },
+                ),
+              );
+            }).toList(),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                _addWordsToList([controller.text.trim()]);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
         ],
+      ),
+    );
+  }
+
+  void _showAddManualWordDialog() {
+    final controller = TextEditingController();
+    String? errorText;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Add Word Manually'),
+            content: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'Enter a spelling word',
+                errorText: errorText,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              onSubmitted: (val) {
+                final text = val.trim();
+                if (text.isEmpty) {
+                  setDialogState(() => errorText = 'Please enter a word.');
+                } else if (text.length < 2) {
+                  setDialogState(() => errorText = 'Word must be at least 2 letters.');
+                } else {
+                  _addWordsToList([text]);
+                  Navigator.pop(context);
+                }
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isEmpty) {
+                    setDialogState(() => errorText = 'Please enter a word.');
+                  } else if (text.length < 2) {
+                    setDialogState(() => errorText = 'Word must be at least 2 letters.');
+                  } else {
+                    _addWordsToList([text]);
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -501,9 +630,22 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
             runSpacing: 12,
             children: _wordPairs
                 .map(
-                  (pair) => pw.Text(
-                    "${_formatScrambled(pair.scrambled)} = ${pair.original.toLowerCase()}",
-                    style: const pw.TextStyle(fontSize: 10),
+                  (pair) => pw.RichText(
+                    text: pw.TextSpan(
+                      children: [
+                        pw.TextSpan(
+                          text: '${_formatScrambled(pair.scrambled)} = ',
+                          style: const pw.TextStyle(fontSize: 10),
+                        ),
+                        pw.TextSpan(
+                          text: pair.original.toLowerCase(),
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 )
                 .toList(),
@@ -659,6 +801,13 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
             ),
             const SizedBox(height: 12),
             _buildBigButton(
+              icon: Icons.auto_awesome,
+              label: 'Load Sight Word Lists',
+              color: Colors.orangeAccent,
+              onPressed: _showSightWordListsDialog,
+            ),
+            const SizedBox(height: 12),
+            _buildBigButton(
               icon: Icons.history,
               label: 'Past Uploads (History)',
               color: Colors.indigo,
@@ -697,6 +846,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
   Widget _buildWordPreviewList() {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _wordPairs.length,
       itemBuilder: (context, index) {
@@ -844,10 +994,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                     ? null
                     : _generateAndPrintPDF,
                 icon: const Icon(Icons.picture_as_pdf),
-                label: const Text(
-                  'Generate Printable Worksheet',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                label: const Text('Print PDF'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.pink,
@@ -909,12 +1056,21 @@ class ReviewWordsDialog extends StatefulWidget {
 class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   late List<TextEditingController> _controllers;
 
+  bool _isWordSuspicious(String word) {
+    // Flag words containing digits or non-letter characters (except hyphens/apostrophes)
+    return word.isNotEmpty &&
+        word.contains(RegExp(r"[^a-zA-Z\u00C0-\u024F\-\']"));
+  }
+
   @override
   void initState() {
     super.initState();
     _controllers = widget.initialWords
         .map((w) => TextEditingController(text: w))
         .toList();
+    for (var ctrl in _controllers) {
+      ctrl.addListener(() => setState(() {}));
+    }
   }
 
   @override
@@ -927,6 +1083,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final hasSuspicious = _controllers.any((c) => _isWordSuspicious(c.text));
     return AlertDialog(
       title: const Row(
         children: [
@@ -941,6 +1098,30 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         child: Column(
           children: [
             const Text('Are these words correct? You can edit or remove them.'),
+            if (hasSuspicious) ...[  
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Some words look unusual (highlighted below). Please check if they are correct.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Expanded(
               child: Column(
@@ -953,6 +1134,8 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                         : ListView.builder(
                             itemCount: _controllers.length,
                             itemBuilder: (context, index) {
+                              final isSuspicious =
+                                  _isWordSuspicious(_controllers[index].text);
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: Row(
@@ -962,10 +1145,36 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                         controller: _controllers[index],
                                         decoration: InputDecoration(
                                           isDense: true,
-                                          hintText: "Word ${index + 1}",
+                                          hintText: 'Word ${index + 1}',
                                           border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
+                                          filled: isSuspicious,
+                                          fillColor: isSuspicious
+                                              ? Colors.orange.shade50
+                                              : null,
+                                          enabledBorder: isSuspicious
+                                              ? OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  borderSide: BorderSide(
+                                                      color: Colors
+                                                          .orange.shade400,
+                                                      width: 1.5),
+                                                )
+                                              : null,
+                                          suffixIcon: isSuspicious
+                                              ? Tooltip(
+                                                  message:
+                                                      'This word looks unusual — is it correct?',
+                                                  child: Icon(
+                                                      Icons
+                                                          .warning_amber_rounded,
+                                                      color: Colors
+                                                          .orange.shade700),
+                                                )
+                                              : null,
                                         ),
                                       ),
                                     ),
@@ -990,8 +1199,10 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                   const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: () {
+                      final ctrl = TextEditingController();
+                      ctrl.addListener(() => setState(() {}));
                       setState(() {
-                        _controllers.add(TextEditingController());
+                        _controllers.add(ctrl);
                       });
                     },
                     icon: const Icon(Icons.add),
