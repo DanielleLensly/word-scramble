@@ -15,6 +15,29 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 
+const Map<String, List<String>> SIGHT_WORD_LISTS = {
+  'Dolch Pre-Primer': [
+    'a', 'and', 'away', 'big', 'blue', 'can', 'come', 'down', 'find', 'for',
+    'funny', 'go', 'help', 'here', 'I', 'in', 'is', 'it', 'jump', 'little',
+    'look', 'make', 'me', 'my', 'not', 'one', 'play', 'red', 'run', 'said',
+    'see', 'the', 'three', 'to', 'two', 'up', 'we', 'where', 'yellow', 'you'
+  ],
+  'Dolch Primer': [
+    'all', 'am', 'are', 'at', 'ate', 'be', 'black', 'brown', 'but', 'came',
+    'did', 'do', 'eat', 'four', 'get', 'good', 'have', 'he', 'into', 'like',
+    'must', 'new', 'no', 'now', 'on', 'our', 'out', 'please', 'pretty', 'ran',
+    'ride', 'saw', 'say', 'she', 'so', 'soon', 'that', 'there', 'they', 'this',
+    'too', 'under', 'want', 'was', 'well', 'went', 'what', 'white', 'who', 'will',
+    'with', 'yes'
+  ],
+  'Dolch 1st Grade': [
+    'after', 'again', 'an', 'any', 'as', 'ask', 'by', 'could', 'every', 'fly',
+    'from', 'give', 'going', 'had', 'has', 'her', 'him', 'his', 'how', 'just',
+    'know', 'let', 'live', 'may', 'of', 'old', 'once', 'open', 'over', 'put',
+    'round', 'some', 'stop', 'take', 'thank', 'them', 'then', 'think', 'walk', 'were', 'when'
+  ],
+};
+
 void main() {
   runApp(const WordScramblerApp());
 }
@@ -489,6 +512,52 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
 
+  void _showSightWordListsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text('Sight Word Lists'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: SIGHT_WORD_LISTS.keys.map((listName) {
+              return Card(
+                elevation: 1,
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  title: Text(listName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text("${SIGHT_WORD_LISTS[listName]!.length} words"),
+                  trailing: const Icon(Icons.add_circle_outline, color: Colors.pink),
+                  onTap: () {
+                    _addWordsToList(SIGHT_WORD_LISTS[listName]!);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Added $listName words!')),
+                    );
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddManualWordDialog() {
     final controller = TextEditingController();
     String? errorText;
@@ -768,7 +837,13 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               color: Colors.teal,
               onPressed: _showAddManualWordDialog,
             ),
-
+            const SizedBox(height: 12),
+            _buildBigButton(
+              icon: Icons.auto_awesome,
+              label: 'Load Sight Word Lists',
+              color: Colors.orangeAccent,
+              onPressed: _showSightWordListsDialog,
+            ),
             const SizedBox(height: 12),
             _buildBigButton(
               icon: Icons.history,
@@ -950,23 +1025,53 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _wordPairs.isEmpty || _isLoading
-                    ? null
-                    : _generateAndPrintPDF,
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Print PDF'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.pink,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _wordPairs.isEmpty || _isLoading
+                        ? null
+                        : _generateAndPrintPDF,
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text('Print PDF'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.pink,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _wordPairs.isEmpty || _isLoading
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FlashCardScreen(
+                                  words: _wordPairs.map((p) => p.original).toList(),
+                                ),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.style),
+                    label: const Text('Flash Cards'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1202,6 +1307,161 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
           child: const Text('Add to List'),
         ),
       ],
+    );
+  }
+}
+
+class FlashCardScreen extends StatefulWidget {
+  final List<String> words;
+
+  const FlashCardScreen({super.key, required this.words});
+
+  @override
+  State<FlashCardScreen> createState() => _FlashCardScreenState();
+}
+
+class _FlashCardScreenState extends State<FlashCardScreen> {
+  late List<String> _shuffledWords;
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _shuffledWords = List.from(widget.words);
+  }
+
+  void _shuffle() {
+    setState(() {
+      _shuffledWords.shuffle();
+      _currentIndex = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_shuffledWords.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Flash Cards')),
+        body: const Center(child: Text('No words to show!')),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.pink.shade50,
+      appBar: AppBar(
+        title: const Text('Sight Word Practice 📚',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.pink,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shuffle, color: Colors.white),
+            onPressed: _shuffle,
+            tooltip: 'Shuffle Words',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: LinearProgressIndicator(
+              value: (_currentIndex + 1) / _shuffledWords.length,
+              backgroundColor: Colors.white,
+              valueColor: const AlwaysStoppedAnimation(Colors.pink),
+              borderRadius: BorderRadius.circular(10),
+              minHeight: 10,
+            ),
+          ),
+          Text(
+            'Word ${_currentIndex + 1} of ${_shuffledWords.length}',
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              itemCount: _shuffledWords.length,
+              itemBuilder: (context, index) {
+                return Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.pink.withValues(alpha: 0.1),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        _shuffledWords[index].toLowerCase(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 72,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildNavButton(
+                  icon: Icons.arrow_back_ios_new,
+                  onPressed: _currentIndex > 0
+                      ? () => _pageController.previousPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          )
+                      : null,
+                ),
+                _buildNavButton(
+                  icon: Icons.arrow_forward_ios,
+                  onPressed: _currentIndex < _shuffledWords.length - 1
+                      ? () => _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          )
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton({required IconData icon, VoidCallback? onPressed}) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: onPressed != null ? Colors.pink : Colors.grey.shade300,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 30),
+      ),
     );
   }
 }
