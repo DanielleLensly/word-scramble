@@ -63,6 +63,26 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   DateTime? _lastBackPressTime;
   final ScrollController _scrollController = ScrollController();
 
+  bool _isWordSuspicious(String word) {
+    if (word.isEmpty) return false;
+    final clean = word.toLowerCase();
+
+    // 1. Symbol/Digit check
+    if (clean.contains(RegExp(r"[^a-z\u00C0-\u024F\-\']"))) return true;
+
+    // 2. No vowels (a, e, i, o, u, y)
+    if (!clean.contains(RegExp(r"[aeiouy]"))) return true;
+
+    // 3. Repeated characters (3+ same in a row, like 'aaab')
+    if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
+
+    // 4. "ii" specifically (common OCR error for 'H' or 'll')
+    if (clean == "ii") return true;
+
+    return false;
+  }
+
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -111,6 +131,17 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         }
       }
     });
+    if (words.length > duplicates.length && mounted) {
+      final addedCount = words.length - duplicates.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added $addedCount word${addedCount > 1 ? 's' : ''} to list'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
     if (duplicates.isNotEmpty && mounted) {
       final msg = duplicates.length == 1
           ? '"${duplicates.first}" is already in the list.'
@@ -513,14 +544,16 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               textCapitalization: TextCapitalization.words,
               onSubmitted: (val) {
                 final text = val.trim();
-                if (text.isEmpty) {
-                  setDialogState(() => errorText = 'Please enter a word.');
-                } else if (text.length < 2) {
-                  setDialogState(() => errorText = 'Word must be at least 2 letters.');
-                } else {
-                  _addWordsToList([text]);
-                  Navigator.pop(context);
-                }
+                 if (text.isEmpty) {
+                   setDialogState(() => errorText = 'Please enter a word.');
+                 } else if (text.length < 2) {
+                   setDialogState(() => errorText = 'Word must be at least 2 letters.');
+                 } else if (_isWordSuspicious(text) && errorText == null) {
+                   setDialogState(() => errorText = 'Suspicious spelling. Sure?');
+                 } else {
+                   _addWordsToList([text]);
+                   Navigator.pop(context);
+                 }
               },
             ),
             actions: [
@@ -535,6 +568,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                     setDialogState(() => errorText = 'Please enter a word.');
                   } else if (text.length < 2) {
                     setDialogState(() => errorText = 'Word must be at least 2 letters.');
+                  } else if (_isWordSuspicious(text) && errorText == null) {
+                    // Show warning first if it's suspicious but not yet flagged
+                    setDialogState(() => errorText = 'Suspicious spelling. Sure?');
                   } else {
                     _addWordsToList([text]);
                     Navigator.pop(context);
@@ -1026,9 +1062,22 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   final ScrollController _scrollController = ScrollController();
 
   bool _isWordSuspicious(String word) {
-    // Flag words containing digits or non-letter characters (except hyphens/apostrophes)
-    return word.isNotEmpty &&
-        word.contains(RegExp(r"[^a-zA-Z\u00C0-\u024F\-\']"));
+    if (word.isEmpty) return false;
+    final clean = word.toLowerCase();
+
+    // 1. Symbol/Digit check
+    if (clean.contains(RegExp(r"[^a-z\u00C0-\u024F\-\']"))) return true;
+
+    // 2. No vowels (a, e, i, o, u, y) - skip common abbreviations like 'mr' if desired, but suspicious for kids
+    if (!clean.contains(RegExp(r"[aeiouy]"))) return true;
+
+    // 3. Repeated characters (3+ same in a row, like 'aaab')
+    if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
+
+    // 4. "ii" specifically (common OCR error for 'H' or 'll')
+    if (clean == "ii") return true;
+
+    return false;
   }
 
   @override
