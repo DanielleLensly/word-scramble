@@ -1018,6 +1018,8 @@ class ReviewWordsDialog extends StatefulWidget {
 
 class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   late List<TextEditingController> _controllers;
+  late List<FocusNode> _focusNodes;
+  final ScrollController _scrollController = ScrollController();
 
   bool _isWordSuspicious(String word) {
     // Flag words containing digits or non-letter characters (except hyphens/apostrophes)
@@ -1031,9 +1033,43 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
     _controllers = widget.initialWords
         .map((w) => TextEditingController(text: w))
         .toList();
+    _focusNodes = List.generate(_controllers.length, (_) => FocusNode());
     for (var ctrl in _controllers) {
       ctrl.addListener(() => setState(() {}));
     }
+  }
+
+  void _addWordAt(int index) {
+    setState(() {
+      final ctrl = TextEditingController();
+      ctrl.addListener(() => setState(() {}));
+      _controllers.insert(index, ctrl);
+      _focusNodes.insert(index, FocusNode());
+    });
+
+    // Request focus for the newly added field
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_focusNodes[index].canRequestFocus) {
+        _focusNodes[index].requestFocus();
+      }
+    });
+
+    // Small delay to let the frame update before scrolling
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        // Approximate calculation: row height is around 68px (padding + TextField)
+        double offset = index * 68.0;
+        // Clamp the offset to avoid overscrolling
+        if (offset > _scrollController.position.maxScrollExtent) {
+          offset = _scrollController.position.maxScrollExtent;
+        }
+        _scrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -1041,6 +1077,10 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
     for (var c in _controllers) {
       c.dispose();
     }
+    for (var fn in _focusNodes) {
+      fn.dispose();
+    }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -1095,6 +1135,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                             child: Text('No words found. Try a clearer photo.'),
                           )
                         : ListView.builder(
+                            controller: _scrollController,
                             itemCount: _controllers.length,
                             itemBuilder: (context, index) {
                               final isSuspicious =
@@ -1106,6 +1147,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                     Expanded(
                                       child: TextField(
                                         controller: _controllers[index],
+                                        focusNode: _focusNodes[index],
                                         decoration: InputDecoration(
                                           isDense: true,
                                           hintText: 'Word ${index + 1}',
@@ -1143,6 +1185,14 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                     ),
                                     IconButton(
                                       icon: const Icon(
+                                        Icons.add_circle_outline,
+                                        color: Colors.green,
+                                      ),
+                                      onPressed: () => _addWordAt(index + 1),
+                                      tooltip: 'Add word after this one',
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
                                         Icons.delete_outline,
                                         color: Colors.red,
                                       ),
@@ -1150,6 +1200,8 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                         setState(() {
                                           _controllers[index].dispose();
                                           _controllers.removeAt(index);
+                                          _focusNodes[index].dispose();
+                                          _focusNodes.removeAt(index);
                                         });
                                       },
                                     ),
@@ -1161,13 +1213,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: () {
-                      final ctrl = TextEditingController();
-                      ctrl.addListener(() => setState(() {}));
-                      setState(() {
-                        _controllers.add(ctrl);
-                      });
-                    },
+                    onPressed: () => _addWordAt(_controllers.length),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Missing Word'),
                   ),
@@ -1189,11 +1235,12 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
               String text = c.text.trim();
               if (text.isNotEmpty) {
                 // Split by spaces or newlines in case user put 2 words in one box
-                finalWords.addAll(text.split(RegExp(r'\s+')));
+                finalWords.addAll(text.split(RegExp(r"\s+")));
               }
             }
+            // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
+            Navigator.of(context).pop();
             widget.onConfirmed(finalWords);
-            Navigator.pop(context);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.pink,
