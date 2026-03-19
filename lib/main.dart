@@ -1059,6 +1059,7 @@ class ReviewWordsDialog extends StatefulWidget {
 class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
+  final Set<TextEditingController> _confirmedControllers = {};
   final ScrollController _scrollController = ScrollController();
 
   bool _isWordSuspicious(String word) {
@@ -1088,14 +1089,26 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         .toList();
     _focusNodes = List.generate(_controllers.length, (_) => FocusNode());
     for (var ctrl in _controllers) {
-      ctrl.addListener(() => setState(() {}));
+      ctrl.addListener(() {
+        if (mounted) {
+          setState(() {
+            _confirmedControllers.remove(ctrl);
+          });
+        }
+      });
     }
   }
 
   void _addWordAt(int index) {
     setState(() {
       final ctrl = TextEditingController();
-      ctrl.addListener(() => setState(() {}));
+      ctrl.addListener(() {
+        if (mounted) {
+          setState(() {
+            _confirmedControllers.remove(ctrl);
+          });
+        }
+      });
       _controllers.insert(index, ctrl);
       _focusNodes.insert(index, FocusNode());
     });
@@ -1170,7 +1183,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'Some words look unusual (highlighted below). Please check if they are correct.',
+                        'Confirm highlighted words by tapping the green check (tick) before adding to list.',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
@@ -1191,15 +1204,19 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                             controller: _scrollController,
                             itemCount: _controllers.length,
                             itemBuilder: (context, index) {
-                              final isSuspicious =
-                                  _isWordSuspicious(_controllers[index].text);
+                              final ctrl = _controllers[index];
+                              final isSuspicious = _isWordSuspicious(ctrl.text);
+                              final isConfirmed = _confirmedControllers.contains(ctrl);
+                              // Treat as 'really' suspicious only if it's suspicious and NOT confirmed
+                              final needsAttention = isSuspicious && !isConfirmed;
+
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: TextField(
-                                        controller: _controllers[index],
+                                        controller: ctrl,
                                         focusNode: _focusNodes[index],
                                         decoration: InputDecoration(
                                           isDense: true,
@@ -1208,11 +1225,11 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),
-                                          filled: isSuspicious,
-                                          fillColor: isSuspicious
+                                          filled: needsAttention,
+                                          fillColor: needsAttention
                                               ? Colors.orange.shade50
                                               : null,
-                                          enabledBorder: isSuspicious
+                                          enabledBorder: needsAttention
                                               ? OutlineInputBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(8),
@@ -1222,7 +1239,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                                       width: 1.5),
                                                 )
                                               : null,
-                                          suffixIcon: isSuspicious
+                                          suffixIcon: needsAttention
                                               ? Tooltip(
                                                   message:
                                                       'This word looks unusual — is it correct?',
@@ -1232,14 +1249,29 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                                       color: Colors
                                                           .orange.shade700),
                                                 )
-                                              : null,
+                                              : (isSuspicious && isConfirmed)
+                                                  ? const Icon(Icons.check_circle,
+                                                      color: Colors.green,
+                                                      size: 20)
+                                                  : null,
                                         ),
                                       ),
                                     ),
+                                    if (needsAttention)
+                                      IconButton(
+                                        icon: const Icon(Icons.done,
+                                            color: Colors.green),
+                                        onPressed: () {
+                                          setState(() {
+                                            _confirmedControllers.add(ctrl);
+                                          });
+                                        },
+                                        tooltip: 'Confirm word is correct',
+                                      ),
                                     IconButton(
                                       icon: const Icon(
                                         Icons.add_circle_outline,
-                                        color: Colors.green,
+                                        color: Colors.blueGrey,
                                       ),
                                       onPressed: () => _addWordAt(index + 1),
                                       tooltip: 'Add word after this one',
@@ -1251,10 +1283,11 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                       ),
                                       onPressed: () {
                                         setState(() {
-                                          _controllers[index].dispose();
+                                          ctrl.dispose();
                                           _controllers.removeAt(index);
                                           _focusNodes[index].dispose();
                                           _focusNodes.removeAt(index);
+                                          _confirmedControllers.remove(ctrl);
                                         });
                                       },
                                     ),
@@ -1283,18 +1316,35 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            List<String> finalWords = [];
-            for (var c in _controllers) {
-              String text = c.text.trim();
-              if (text.isNotEmpty) {
-                // Split by spaces or newlines in case user put 2 words in one box
-                finalWords.addAll(text.split(RegExp(r"\s+")));
+              List<String> unconfirmedWords = [];
+              for (var c in _controllers) {
+                if (_isWordSuspicious(c.text) && !_confirmedControllers.contains(c)) {
+                  unconfirmedWords.add(c.text);
+                }
               }
-            }
-            // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
-            Navigator.of(context).pop();
-            widget.onConfirmed(finalWords);
-          },
+
+              if (unconfirmedWords.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please confirm or fix highlighted words first.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+
+              List<String> finalWords = [];
+              for (var c in _controllers) {
+                String text = c.text.trim();
+                if (text.isNotEmpty) {
+                  // Split by spaces or newlines in case user put 2 words in one box
+                  finalWords.addAll(text.split(RegExp(r"\s+")));
+                }
+              }
+              // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
+              Navigator.of(context).pop();
+              widget.onConfirmed(finalWords);
+            },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.pink,
             foregroundColor: Colors.white,
