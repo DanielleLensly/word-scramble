@@ -14,29 +14,6 @@ import 'package:docx_to_text/docx_to_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
-const Map<String, List<String>> SIGHT_WORD_LISTS = {
-  'Dolch Pre-Primer': [
-    'a', 'and', 'away', 'big', 'blue', 'can', 'come', 'down', 'find', 'for',
-    'funny', 'go', 'help', 'here', 'I', 'in', 'is', 'it', 'jump', 'little',
-    'look', 'make', 'me', 'my', 'not', 'one', 'play', 'red', 'run', 'said',
-    'see', 'the', 'three', 'to', 'two', 'up', 'we', 'where', 'yellow', 'you'
-  ],
-  'Dolch Primer': [
-    'all', 'am', 'are', 'at', 'ate', 'be', 'black', 'brown', 'but', 'came',
-    'did', 'do', 'eat', 'four', 'get', 'good', 'have', 'he', 'into', 'like',
-    'must', 'new', 'no', 'now', 'on', 'our', 'out', 'please', 'pretty', 'ran',
-    'ride', 'saw', 'say', 'she', 'so', 'soon', 'that', 'there', 'they', 'this',
-    'too', 'under', 'want', 'was', 'well', 'went', 'what', 'white', 'who', 'will',
-    'with', 'yes'
-  ],
-  'Dolch 1st Grade': [
-    'after', 'again', 'an', 'any', 'as', 'ask', 'by', 'could', 'every', 'fly',
-    'from', 'give', 'going', 'had', 'has', 'her', 'him', 'his', 'how', 'just',
-    'know', 'let', 'live', 'may', 'of', 'old', 'once', 'open', 'over', 'put',
-    'round', 'some', 'stop', 'take', 'thank', 'them', 'then', 'think', 'walk', 'were', 'when'
-  ],
-};
-
 
 void main() {
   runApp(const WordScramblerApp());
@@ -511,51 +488,6 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     });
   }
 
-  void _showSightWordListsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Colors.orangeAccent),
-            SizedBox(width: 10),
-            Text('Sight Word Lists'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: SIGHT_WORD_LISTS.keys.map((listName) {
-              return Card(
-                elevation: 1,
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  title: Text(listName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("${SIGHT_WORD_LISTS[listName]!.length} words"),
-                  trailing: const Icon(Icons.add_circle_outline, color: Colors.pink),
-                  onTap: () {
-                    _addWordsToList(SIGHT_WORD_LISTS[listName]!);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added $listName words!')),
-                    );
-                  },
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showAddManualWordDialog() {
     final controller = TextEditingController();
@@ -836,13 +768,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               color: Colors.teal,
               onPressed: _showAddManualWordDialog,
             ),
-            const SizedBox(height: 12),
-            _buildBigButton(
-              icon: Icons.auto_awesome,
-              label: 'Load Sight Word Lists',
-              color: Colors.orangeAccent,
-              onPressed: _showSightWordListsDialog,
-            ),
+
             const SizedBox(height: 12),
             _buildBigButton(
               icon: Icons.history,
