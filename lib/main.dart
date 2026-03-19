@@ -393,8 +393,12 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   List<String> _extractWords(String text) {
+    // Only split on whitespace and common word-listing separators
     return text
-        .split(RegExp(r'[\s\p{P}1234567890]+', unicode: true))
+        .split(RegExp(r'[\s\n\r,;:]+'))
+        .map((s) => s.trim())
+        // Trim common surrounding punctuation like dots, etc., but keep what's inside
+        .map((s) => s.replaceAll(RegExp(r'^[.!?\(\)\[\]{}"]+|[.!?\(\)\[\]{}"]+$'), '')) 
         .where((s) => s.isNotEmpty && s.length >= 2)
         .toList();
   }
