@@ -76,8 +76,8 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     // 3. Repeated characters (3+ same in a row, like 'aaab')
     if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
 
-    // 4. "ii" specifically (common OCR error for 'H' or 'll')
-    if (clean == "ii") return true;
+    // 4. Repeated short words (like 'uu', 'aa', 'ii', 'll')
+    if (clean.length == 2 && clean[0] == clean[1]) return true;
 
     return false;
   }
@@ -1075,8 +1075,8 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
     // 3. Repeated characters (3+ same in a row, like 'aaab')
     if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
 
-    // 4. "ii" specifically (common OCR error for 'H' or 'll')
-    if (clean == "ii") return true;
+    // 4. Repeated short words (like 'uu', 'aa', 'ii', 'll')
+    if (clean.length == 2 && clean[0] == clean[1]) return true;
 
     return false;
   }
