@@ -454,15 +454,52 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     );
   }
 
-  Future<void> _launchPrivacyPolicy() async {
+  Future<void> _launchPrivacyPolicyUrl() async {
     final Uri url = Uri.parse('https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0');
-    if (!await launchUrl(url)) {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open Privacy Policy link')),
         );
       }
     }
+  }
+
+  void _showPrivacyPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: Colors.pink),
+            SizedBox(width: 10),
+            Text('Privacy Policy'),
+          ],
+        ),
+        content: const Text(
+          'Kids Scramble Quest does not collect, store, or share any personal data. '
+          'All word lists stay on your device. Tap below to read the full policy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _launchPrivacyPolicyUrl();
+            },
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('View Privacy Policy'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.pink,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _reshuffleScrambled(int index) {
@@ -713,8 +750,8 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: _launchPrivacyPolicy,
+            icon: const Icon(Icons.shield_outlined, color: Colors.white),
+            onPressed: _showPrivacyPolicyDialog,
             tooltip: 'Privacy Policy',
           ),
           if (_wordPairs.isNotEmpty)
