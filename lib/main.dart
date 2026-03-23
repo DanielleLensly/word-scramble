@@ -14,9 +14,11 @@ import 'package:docx_to_text/docx_to_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'sum_generator_page.dart';
+import 'theme_manager.dart';
 
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ThemeManager.init();
   runApp(const WordScramblerApp());
 }
 
@@ -25,22 +27,41 @@ class WordScramblerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kids Scramble Quest',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.pink,
-          primary: Colors.pink,
-          secondary: Colors.pinkAccent,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      home: const MainMenuPage(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (_, mode, __) {
+        return MaterialApp(
+          title: 'Kids Scramble Quest',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.pink,
+              primary: Colors.pink,
+              secondary: Colors.pinkAccent,
+              brightness: Brightness.light,
+            ),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.pink,
+              primary: Colors.pink,
+              secondary: Colors.pinkAccent,
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+          ),
+          themeMode: mode,
+          home: const MainMenuPage(),
+        );
+      },
     );
   }
 }
+
+// ThemeToggle moved to theme_manager.dart
 
 class WordPair {
   final String original;
@@ -54,13 +75,26 @@ class MainMenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Menu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: const [ThemeToggle(), SizedBox(width: 8)],
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.pink.shade100, Colors.blue.shade100],
+            colors: isDark 
+              ? [Colors.grey.shade900, Colors.black]
+              : [
+                  const Color.fromARGB(255, 214, 111, 147),
+                  const Color.fromARGB(255, 98, 156, 204),
+                ],
           ),
         ),
         child: SafeArea(
@@ -79,7 +113,13 @@ class MainMenuPage extends StatelessWidget {
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      shadows: [Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black26,
+                          offset: Offset(2, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -91,7 +131,9 @@ class MainMenuPage extends StatelessWidget {
                     color: Colors.pink,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ScrambleMainPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const ScrambleMainPage(),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -103,7 +145,9 @@ class MainMenuPage extends StatelessWidget {
                     color: Colors.blue.shade700,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SumGeneratorPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const SumGeneratorPage(),
+                      ),
                     ),
                   ),
                 ],
@@ -115,7 +159,8 @@ class MainMenuPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, {
+  Widget _buildMenuCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
@@ -134,7 +179,10 @@ class MainMenuPage extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(15)),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 child: Icon(icon, color: color, size: 40),
               ),
               const SizedBox(width: 20),
@@ -142,8 +190,18 @@ class MainMenuPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-                    Text(subtitle, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
@@ -190,7 +248,6 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     return false;
   }
 
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -229,7 +286,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       for (var word in words) {
         final cleaned = word.trim();
         if (cleaned.length >= 2) {
-          if (_wordPairs.any((p) => p.original.toLowerCase() == cleaned.toLowerCase())) {
+          if (_wordPairs.any(
+            (p) => p.original.toLowerCase() == cleaned.toLowerCase(),
+          )) {
             duplicates.add(cleaned);
           } else {
             _wordPairs.add(
@@ -243,7 +302,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       final addedCount = words.length - duplicates.length;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Added $addedCount word${addedCount > 1 ? 's' : ''} to list'),
+          content: Text(
+            'Added $addedCount word${addedCount > 1 ? 's' : ''} to list',
+          ),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
         ),
@@ -270,12 +331,10 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList('upload_history') ?? [];
 
-    final batch = {
-      'date': DateTime.now().toIso8601String(),
-      'words': words,
-    };
+    final batch = {'date': DateTime.now().toIso8601String(), 'words': words};
     history.insert(0, jsonEncode(batch)); // newest first
-    if (history.length > 20) history = history.sublist(0, 20); // Keep last 20 uploads
+    if (history.length > 20)
+      history = history.sublist(0, 20); // Keep last 20 uploads
 
     await prefs.setStringList('upload_history', history);
   }
@@ -291,7 +350,12 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         builder: (context) => AlertDialog(
           title: const Text('No Past Uploads'),
           content: const Text("You haven't imported any word lists yet!"),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
         ),
       );
       return;
@@ -317,13 +381,22 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               final batch = jsonDecode(history[index]);
               final wordsList = List<String>.from(batch['words']);
               final date = DateTime.parse(batch['date']);
-              final displayDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+              final displayDate =
+                  "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
               return Card(
                 elevation: 2,
                 child: ListTile(
                   leading: const Icon(Icons.history, color: Colors.indigo),
-                  title: Text(displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text("${wordsList.length} words: ${wordsList.take(4).join(', ')}..."),
+                  title: Text(
+                    displayDate,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "${wordsList.length} words: ${wordsList.take(4).join(', ')}...",
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(context);
@@ -351,8 +424,14 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Words from This Upload', style: TextStyle(fontSize: 18)),
-            Text(dateLabel, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const Text(
+              'Words from This Upload',
+              style: TextStyle(fontSize: 18),
+            ),
+            Text(
+              dateLabel,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
         content: SizedBox(
@@ -368,7 +447,13 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                     leading: CircleAvatar(
                       radius: 12,
                       backgroundColor: Colors.indigo.shade50,
-                      child: Text("${index + 1}", style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+                      child: Text(
+                        "${index + 1}",
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.indigo,
+                        ),
+                      ),
                     ),
                     title: Text(words[index]),
                   ),
@@ -391,7 +476,10 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                     Navigator.pop(context);
                   },
                   icon: const Icon(Icons.add_circle),
-                  label: const Text('Add All to List', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Add All to List',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -537,7 +625,12 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         .split(RegExp(r'[\s\n\r,;:]+'))
         .map((s) => s.trim())
         // Trim common surrounding punctuation like dots, etc., but keep what's inside
-        .map((s) => s.replaceAll(RegExp(r'^[.!?\(\)\[\]{}"]+|[.!?\(\)\[\]{}"]+$'), '')) 
+        .map(
+          (s) => s.replaceAll(
+            RegExp(r'^[.!?\(\)\[\]{}"]+|[.!?\(\)\[\]{}"]+$'),
+            '',
+          ),
+        )
         .where((s) => s.isNotEmpty && s.length >= 2)
         .toList();
   }
@@ -553,14 +646,19 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear List?'),
-        content: const Text('Are you sure you want to remove all words from the current list? This cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to remove all words from the current list? This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               setState(() {
                 _wordPairs.clear();
@@ -575,7 +673,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   Future<void> _launchPrivacyPolicyUrl() async {
-    final Uri url = Uri.parse('https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0');
+    final Uri url = Uri.parse(
+      'https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0',
+    );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -631,7 +731,6 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     });
   }
 
-
   void _showAddManualWordDialog() {
     final controller = TextEditingController();
     String? errorText;
@@ -646,22 +745,28 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
               decoration: InputDecoration(
                 hintText: 'Enter a spelling word',
                 errorText: errorText,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               autofocus: true,
               textCapitalization: TextCapitalization.words,
               onSubmitted: (val) {
                 final text = val.trim();
-                 if (text.isEmpty) {
-                   setDialogState(() => errorText = 'Please enter a word.');
-                 } else if (text.length < 2) {
-                   setDialogState(() => errorText = 'Word must be at least 2 letters.');
-                 } else if (_isWordSuspicious(text) && errorText == null) {
-                   setDialogState(() => errorText = 'Suspicious spelling. Sure?');
-                 } else {
-                   _addWordsToList([text]);
-                   Navigator.pop(context);
-                 }
+                if (text.isEmpty) {
+                  setDialogState(() => errorText = 'Please enter a word.');
+                } else if (text.length < 2) {
+                  setDialogState(
+                    () => errorText = 'Word must be at least 2 letters.',
+                  );
+                } else if (_isWordSuspicious(text) && errorText == null) {
+                  setDialogState(
+                    () => errorText = 'Suspicious spelling. Sure?',
+                  );
+                } else {
+                  _addWordsToList([text]);
+                  Navigator.pop(context);
+                }
               },
             ),
             actions: [
@@ -675,10 +780,14 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                   if (text.isEmpty) {
                     setDialogState(() => errorText = 'Please enter a word.');
                   } else if (text.length < 2) {
-                    setDialogState(() => errorText = 'Word must be at least 2 letters.');
+                    setDialogState(
+                      () => errorText = 'Word must be at least 2 letters.',
+                    );
                   } else if (_isWordSuspicious(text) && errorText == null) {
                     // Show warning first if it's suspicious but not yet flagged
-                    setDialogState(() => errorText = 'Suspicious spelling. Sure?');
+                    setDialogState(
+                      () => errorText = 'Suspicious spelling. Sure?',
+                    );
                   } else {
                     _addWordsToList([text]);
                     Navigator.pop(context);
@@ -778,6 +887,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) async {
@@ -801,70 +911,74 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-        title: const Text(
-          '✨ Kids Scramble Quest ✨',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
+          title: const Text(
+            '✨ Kids Scramble Quest ✨',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 18,
+            ),
           ),
-        ),
-        backgroundColor: Colors.pink,
-        actions: [
-          Row(
-            children: [
-              Text(
-                _isUppercase ? 'ABC' : 'abc',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          backgroundColor: isDark ? Colors.grey.shade900 : Colors.pink,
+          actions: [
+            const ThemeToggle(),
+            const SizedBox(width: 8),
+            Row(
+              children: [
+                Text(
+                  _isUppercase ? 'ABC' : 'abc',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-              Switch(
-                value: _isUppercase,
-                onChanged: (val) => setState(() => _isUppercase = val),
-                activeThumbColor: Colors.white,
-                activeTrackColor: Colors.pinkAccent,
-              ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.shield_outlined, color: Colors.white),
-            onPressed: _showPrivacyPolicyDialog,
-            tooltip: 'Privacy Policy',
-          ),
-          if (_wordPairs.isNotEmpty)
+                Switch(
+                  value: _isUppercase,
+                  onChanged: (val) => setState(() => _isUppercase = val),
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: Colors.pinkAccent,
+                ),
+              ],
+            ),
             IconButton(
-              icon: const Icon(Icons.delete_sweep, color: Colors.white),
-              onPressed: _clearWords,
-              tooltip: 'Clear All',
+              icon: const Icon(Icons.shield_outlined, color: Colors.white),
+              onPressed: _showPrivacyPolicyDialog,
+              tooltip: 'Privacy Policy',
             ),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.pink.shade50, Colors.white],
-          ),
-        ),
-        child: Column(
-          children: [
-            if (_isLoading) const LinearProgressIndicator(color: Colors.pink),
-            Expanded(
-              child: _wordPairs.isEmpty
-                  ? _buildEmptyState()
-                  : _buildWordPreviewList(),
-            ),
-            _buildActionButtons(),
+            if (_wordPairs.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.delete_sweep, color: Colors.white),
+                onPressed: _clearWords,
+                tooltip: 'Clear All',
+              ),
           ],
         ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isDark 
+                ? [Colors.black, Colors.grey.shade900]
+                : [Colors.pink.shade50, Colors.white],
+            ),
+          ),
+          child: Column(
+            children: [
+              if (_isLoading) LinearProgressIndicator(color: isDark ? Colors.pinkAccent : Colors.pink),
+              Expanded(
+                child: _wordPairs.isEmpty
+                    ? _buildEmptyState()
+                    : _buildWordPreviewList(),
+              ),
+              _buildActionButtons(),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildEmptyState() {
     return Center(
@@ -1275,7 +1389,7 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         child: Column(
           children: [
             const Text('Are these words correct? You can edit or remove them.'),
-            if (hasSuspicious) ...[  
+            if (hasSuspicious) ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(10),
@@ -1286,8 +1400,11 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
-                        color: Colors.orange.shade700, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange.shade700,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -1314,9 +1431,11 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                             itemBuilder: (context, index) {
                               final ctrl = _controllers[index];
                               final isSuspicious = _isWordSuspicious(ctrl.text);
-                              final isConfirmed = _confirmedControllers.contains(ctrl);
+                              final isConfirmed = _confirmedControllers
+                                  .contains(ctrl);
                               // Treat as 'really' suspicious only if it's suspicious and NOT confirmed
-                              final needsAttention = isSuspicious && !isConfirmed;
+                              final needsAttention =
+                                  isSuspicious && !isConfirmed;
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
@@ -1330,8 +1449,9 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                           isDense: true,
                                           hintText: 'Word ${index + 1}',
                                           border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           filled: needsAttention,
                                           fillColor: needsAttention
@@ -1342,9 +1462,10 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                                   borderRadius:
                                                       BorderRadius.circular(8),
                                                   borderSide: BorderSide(
-                                                      color: Colors
-                                                          .orange.shade400,
-                                                      width: 1.5),
+                                                    color:
+                                                        Colors.orange.shade400,
+                                                    width: 1.5,
+                                                  ),
                                                 )
                                               : null,
                                           suffixIcon: needsAttention
@@ -1352,23 +1473,27 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
                                                   message:
                                                       'This word looks unusual — is it correct?',
                                                   child: Icon(
-                                                      Icons
-                                                          .warning_amber_rounded,
-                                                      color: Colors
-                                                          .orange.shade700),
+                                                    Icons.warning_amber_rounded,
+                                                    color:
+                                                        Colors.orange.shade700,
+                                                  ),
                                                 )
                                               : (isSuspicious && isConfirmed)
-                                                  ? const Icon(Icons.check_circle,
-                                                      color: Colors.green,
-                                                      size: 20)
-                                                  : null,
+                                              ? const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.green,
+                                                  size: 20,
+                                                )
+                                              : null,
                                         ),
                                       ),
                                     ),
                                     if (needsAttention)
                                       IconButton(
-                                        icon: const Icon(Icons.done,
-                                            color: Colors.green),
+                                        icon: const Icon(
+                                          Icons.done,
+                                          color: Colors.green,
+                                        ),
                                         onPressed: () {
                                           setState(() {
                                             _confirmedControllers.add(ctrl);
@@ -1424,35 +1549,38 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-              List<String> unconfirmedWords = [];
-              for (var c in _controllers) {
-                if (_isWordSuspicious(c.text) && !_confirmedControllers.contains(c)) {
-                  unconfirmedWords.add(c.text);
-                }
+            List<String> unconfirmedWords = [];
+            for (var c in _controllers) {
+              if (_isWordSuspicious(c.text) &&
+                  !_confirmedControllers.contains(c)) {
+                unconfirmedWords.add(c.text);
               }
+            }
 
-              if (unconfirmedWords.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please confirm or fix highlighted words first.'),
-                    backgroundColor: Colors.redAccent,
+            if (unconfirmedWords.isNotEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Please confirm or fix highlighted words first.',
                   ),
-                );
-                return;
-              }
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+              return;
+            }
 
-              List<String> finalWords = [];
-              for (var c in _controllers) {
-                String text = c.text.trim();
-                if (text.isNotEmpty) {
-                  // Split by spaces or newlines in case user put 2 words in one box
-                  finalWords.addAll(text.split(RegExp(r"\s+")));
-                }
+            List<String> finalWords = [];
+            for (var c in _controllers) {
+              String text = c.text.trim();
+              if (text.isNotEmpty) {
+                // Split by spaces or newlines in case user put 2 words in one box
+                finalWords.addAll(text.split(RegExp(r"\s+")));
               }
-              // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
-              Navigator.of(context).pop();
-              widget.onConfirmed(finalWords);
-            },
+            }
+            // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
+            Navigator.of(context).pop();
+            widget.onConfirmed(finalWords);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.pink,
             foregroundColor: Colors.white,

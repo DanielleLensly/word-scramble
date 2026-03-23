@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'sum_generator/sum_generator.dart';
+import 'theme_manager.dart';
 
 class SumGeneratorPage extends StatefulWidget {
   const SumGeneratorPage({super.key});
@@ -94,28 +95,33 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Azure theme: Light Blue / Blue
     return Theme(
       data: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
-          primary: Colors.blue.shade700,
+          primary: isDark ? Colors.blue.shade300 : Colors.blue.shade700,
           secondary: Colors.lightBlueAccent,
+          brightness: isDark ? Brightness.dark : Brightness.light,
         ),
         useMaterial3: true,
       ),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('🔢 Sum Generator', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-          backgroundColor: Colors.blue.shade700,
+          backgroundColor: isDark ? Colors.grey.shade900 : Colors.blue.shade700,
           iconTheme: const IconThemeData(color: Colors.white),
+          actions: const [ThemeToggle(), SizedBox(width: 8)],
         ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.blue.shade50, Colors.white],
+              colors: isDark 
+                ? [Colors.black, Colors.grey.shade900]
+                : [Colors.blue.shade50, Colors.white],
             ),
           ),
           child: Column(
@@ -223,6 +229,7 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
   }
 
   Widget _buildSumsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -235,9 +242,9 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
       itemBuilder: (context, index) {
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? Colors.grey.shade800 : Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.shade100),
+            border: Border.all(color: isDark ? Colors.blue.shade900 : Colors.blue.shade100),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -251,11 +258,12 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
   }
 
   Widget _buildActionButtons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+        color: isDark ? Colors.grey.shade900 : Colors.white,
+        boxShadow: [BoxShadow(color: isDark ? Colors.black45 : Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: SafeArea(
         child: SizedBox(
@@ -265,8 +273,8 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
             icon: const Icon(Icons.picture_as_pdf),
             label: const Text('Print Math Worksheet (PDF)'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade700,
-              foregroundColor: Colors.white,
+              backgroundColor: isDark ? Colors.blue.shade400 : Colors.blue.shade700,
+              foregroundColor: isDark ? Colors.black : Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
