@@ -29,7 +29,7 @@ class WordScramblerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
-      builder: (_, mode, __) {
+      builder: (_, mode, _) {
         return MaterialApp(
           title: 'Kids Scramble Quest',
           debugShowCheckedModeBanner: false,
@@ -333,8 +333,9 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
     final batch = {'date': DateTime.now().toIso8601String(), 'words': words};
     history.insert(0, jsonEncode(batch)); // newest first
-    if (history.length > 20)
+    if (history.length > 20) {
       history = history.sublist(0, 20); // Keep last 20 uploads
+    }
 
     await prefs.setStringList('upload_history', history);
   }
