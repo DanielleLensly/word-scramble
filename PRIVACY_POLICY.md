@@ -1,11 +1,11 @@
-# Privacy Policy for Kids Scramble Quest
+# Privacy Policy for Scramble Quest
 
 **Last Updated: March 16, 2026**
 
-Goldilocs Dev ("we," "us," or "our") operates the **Kids Scramble Quest** mobile application (the "Service"). This page informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service.
+Goldilocs Dev ("we," "us," or "our") operates the **Scramble Quest** mobile application (the "Service"). This page informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service.
 
 ## 1. Information Collection and Use
-**Kids Scramble Quest** is designed with children's privacy in mind. We do **not** collect, store, or transmit any personally identifiable information (PII) to external servers.
+**Scramble Quest** is designed with children's privacy in mind. We do **not** collect, store, or transmit any personally identifiable information (PII) to external servers.
 
 ### Camera and Images
 The app requires access to your device's camera and photo gallery to allow you to import spelling lists. 

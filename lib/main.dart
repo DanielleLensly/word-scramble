@@ -13,7 +13,7 @@ import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 import 'package:docx_to_text/docx_to_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'sum_generator_page.dart';
+// import 'sum_generator_page.dart'; // Removed for first release
 import 'theme_manager.dart';
 
 void main() async {
@@ -31,7 +31,7 @@ class WordScramblerApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, mode, _) {
         return MaterialApp(
-          title: 'Kids Scramble Quest',
+          title: 'Scramble Quest',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -107,7 +107,7 @@ class MainMenuPage extends StatelessWidget {
                   const Icon(Icons.auto_awesome, size: 80, color: Colors.white),
                   const SizedBox(height: 20),
                   const Text(
-                    'Kids Scramble Quest',
+                    'Scramble Quest',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 32,
@@ -125,28 +125,14 @@ class MainMenuPage extends StatelessWidget {
                   const SizedBox(height: 40),
                   _buildMenuCard(
                     context,
-                    title: 'Word Scrambler',
-                    subtitle: 'Spelling practice made fun!',
+                    title: 'Word Scramble',
+                    subtitle: 'Create spelling worksheets!',
                     icon: Icons.spellcheck,
                     color: Colors.pink,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const ScrambleMainPage(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildMenuCard(
-                    context,
-                    title: 'Sum Generator',
-                    subtitle: 'Master math by grade!',
-                    icon: Icons.calculate,
-                    color: Colors.blue.shade700,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SumGeneratorPage(),
                       ),
                     ),
                   ),
@@ -677,6 +663,11 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     final Uri url = Uri.parse(
       'https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0',
     );
+    
+    // Parental Gate check before launching external URL
+    final bool parentVerified = await _showParentalGate();
+    if (!parentVerified) return;
+
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -684,6 +675,73 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         );
       }
     }
+  }
+
+  Future<bool> _showParentalGate() async {
+    final num1 = 5 + (DateTime.now().millisecond % 5);
+    final num2 = 6 + (DateTime.now().microsecond % 5);
+    final answer = num1 + num2;
+    final controller = TextEditingController();
+    String? errorText;
+
+    final bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Parental Verification'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Please ask your parent to solve this simple math question to continue:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '$num1 + $num2 = ?',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.pink),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Answer',
+                  errorText: errorText,
+                  border: const OutlineInputBorder(),
+                ),
+                onSubmitted: (val) {
+                  if (val == answer.toString()) {
+                    Navigator.pop(context, true);
+                  } else {
+                    setDialogState(() => errorText = 'Incorrect. Try again!');
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text == answer.toString()) {
+                  Navigator.pop(context, true);
+                } else {
+                  setDialogState(() => errorText = 'Incorrect. Try again!');
+                }
+              },
+              child: const Text('Verify'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result ?? false;
   }
 
   void _showPrivacyPolicyDialog() {
@@ -698,7 +756,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           ],
         ),
         content: const Text(
-          'Kids Scramble Quest does not collect, store, or share any personal data. '
+          'Scramble Quest does not collect, store, or share any personal data. '
           'All word lists stay on your device. Tap below to read the full policy.',
         ),
         actions: [
@@ -1071,6 +1129,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   Widget _buildWordPreviewList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
@@ -1101,10 +1160,10 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                       ),
                       Text(
                         pair.original.toLowerCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                     ],
@@ -1130,10 +1189,10 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                       ),
                       Text(
                         _formatScrambled(pair.scrambled),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Colors.blueAccent,
+                          color: isDark ? Colors.lightBlueAccent : Colors.blueAccent,
                         ),
                       ),
                     ],
@@ -1162,14 +1221,15 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
   Widget _buildActionButtons() {
     if (_wordPairs.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.grey.shade900 : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: isDark ? Colors.black45 : Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -1223,8 +1283,8 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
                 label: const Text('Print PDF'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.pink,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? Colors.pinkAccent : Colors.pink,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

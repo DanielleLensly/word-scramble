@@ -47,16 +47,19 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
           ),
           pw.Padding(padding: const pw.EdgeInsets.only(bottom: 20)),
           pw.Wrap(
-            spacing: 40,
-            runSpacing: 20,
+            spacing: 30,
+            runSpacing: 25,
             children: _generatedSums.asMap().entries.map((entry) {
               final index = entry.key + 1;
               final sum = entry.value;
               return pw.SizedBox(
-                width: 150,
-                child: pw.Text(
-                  '$index)  $sum ________',
-                  style: const pw.TextStyle(fontSize: 16),
+                width: 240, // Increased width for larger sums
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('$index) $sum', style: const pw.TextStyle(fontSize: 14)),
+                    pw.Text('________', style: const pw.TextStyle(fontSize: 14)),
+                  ],
                 ),
               );
             }).toList(),
@@ -229,28 +232,29 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
   }
 
   Widget _buildSumsList() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 3,
-        crossAxisSpacing: 10,
+        crossAxisCount: 1, // Single column to avoid overflow in UI
+        childAspectRatio: 8,
         mainAxisSpacing: 10,
       ),
       itemCount: _generatedSums.length,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade800 : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isDark ? Colors.blue.shade900 : Colors.blue.shade100),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            '${index + 1}) ${_generatedSums[index]}',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${index + 1}) ${_generatedSums[index]}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const Text(
+                '_______',
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         );
       },
