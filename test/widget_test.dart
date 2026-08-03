@@ -4,6 +4,6 @@ import 'package:scramble/main.dart';
 void main() {
   testWidgets('App renders with correct title', (WidgetTester tester) async {
     await tester.pumpWidget(const WordScramblerApp());
-    expect(find.text('✨ Kids Scramble Quest ✨'), findsOneWidget);
+    expect(find.text('✨ Scramble Quest ✨'), findsOneWidget);
   });
 }

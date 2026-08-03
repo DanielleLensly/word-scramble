@@ -1,6 +1,6 @@
-# Kids Scramble Quest 🌟
+# Scramble Quest 🌟
 
-A fun, interactive, and beautifully designed Flutter application designed to help children learn spelling and recognize letter patterns through word scrambling! This app takes an innovative approach by allowing teachers and parents to instantly import and generate scrambled spelling lists from almost any source.
+A fun, interactive, and beautifully designed Flutter application designed to help learn spelling and recognize letter patterns through word scrambling! This app takes an innovative approach by allowing users to instantly import and generate scrambled spelling lists from almost any source.
 
 ## Features ✨
 
