@@ -25,7 +25,7 @@ class WordScramblerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kids Scramble Quest',
+      title: 'Scramble Quest',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -60,7 +60,6 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   bool _isLoading = false;
   bool _isUppercase = true;
   final ImagePicker _picker = ImagePicker();
-  DateTime? _lastBackPressTime;
   final ScrollController _scrollController = ScrollController();
 
   bool _isWordSuspicious(String word) {
@@ -489,7 +488,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           ],
         ),
         content: const Text(
-          'Kids Scramble Quest does not collect, store, or share any personal data. '
+          'Scramble Quest does not collect, store, or share any personal data. '
           'All word lists stay on your device. Tap below to read the full policy.',
         ),
         actions: [
@@ -670,31 +669,11 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (didPop) return;
-        final now = DateTime.now();
-        if (_lastBackPressTime == null ||
-            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Press back again to exit'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        } else {
-          SystemNavigator.pop();
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
+    return Scaffold(
+      appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          '✨ Kids Scramble Quest ✨',
+          '✨ Scramble Quest ✨',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -754,9 +733,8 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildEmptyState() {
     return Center(

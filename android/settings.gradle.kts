@@ -1,3 +1,5 @@
+rootProject.name = "scramble-android"
+
 pluginManagement {
     val flutterSdkPath =
         run {
