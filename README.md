@@ -81,7 +81,7 @@ lib/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/YourUsername/word-scramble.git
+   git clone https://github.com/DanielleLensly/word-scramble.git
    cd word-scramble
    ```
 
