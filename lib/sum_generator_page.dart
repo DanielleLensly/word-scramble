@@ -159,16 +159,21 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
                 : [Colors.blue.shade50, Colors.white],
             ),
           ),
-          child: Column(
-            children: [
-              _buildSettingsCard(),
-              Expanded(
-                child: _generatedSums.isEmpty
-                    ? _buildEmptyState()
-                    : _buildSumsList(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                children: [
+                  _buildSettingsCard(),
+                  Expanded(
+                    child: _generatedSums.isEmpty
+                        ? _buildEmptyState()
+                        : _buildSumsList(),
+                  ),
+                  if (_generatedSums.isNotEmpty) _buildActionButtons(),
+                ],
               ),
-              if (_generatedSums.isNotEmpty) _buildActionButtons(),
-            ],
+            ),
           ),
         ),
       ),

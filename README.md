@@ -29,6 +29,23 @@
 
 ---
 
+## 📱 iOS / Web App (PWA)
+
+Scramble Quest is available as a Web App hosted on Firebase Hosting:  
+🌐 **Live Web App**: [https://scramble-quest.web.app](https://scramble-quest.web.app)
+
+### How to install on iOS / iPhone (Add to Home Screen):
+iPhone users can use **Scramble Quest** as a full-screen native app without needing the App Store:
+
+1. Open **Safari** on your iPhone and go to [https://scramble-quest.web.app](https://scramble-quest.web.app).
+2. Tap the **Share** button (the square with an arrow pointing up at the bottom of Safari).
+3. Scroll down and tap **"Add to Home Screen"**.
+4. Tap **Add** in the top-right corner.
+
+The **Scramble Quest** app icon will appear directly on your iPhone Home Screen and launch in full-screen mode just like a native iOS app!
+
+---
+
 ## 📁 Project Architecture & File Locations
 
 All application logic is structured cleanly within the `lib/` directory:

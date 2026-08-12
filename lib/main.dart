@@ -77,7 +77,6 @@ class MainMenuPage extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Menu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: const [ThemeToggle(), SizedBox(width: 8)],
@@ -98,50 +97,53 @@ class MainMenuPage extends StatelessWidget {
         ),
         child: SafeArea(
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.auto_awesome, size: 80, color: Colors.white),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Scramble Quest',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4),
-                      ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 80, color: Colors.white),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Scramble Quest',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 40),
-                  _buildMenuCard(
-                    context,
-                    title: 'Word Scramble',
-                    subtitle: 'Create spelling worksheets!',
-                    icon: Icons.spellcheck,
-                    color: Colors.pink,
-                    onTap: () => Navigator.push(
+                    const SizedBox(height: 40),
+                    _buildMenuCard(
                       context,
-                      MaterialPageRoute(builder: (context) => const ScrambleMainPage()),
+                      title: 'Word Scramble',
+                      subtitle: 'Create spelling worksheets!',
+                      icon: Icons.spellcheck,
+                      color: Colors.pink,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScrambleMainPage()),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildMenuCard(
-                    context,
-                    title: 'Sum Generator',
-                    subtitle: 'Generate math challenges!',
-                    icon: Icons.calculate,
-                    color: Colors.blue.shade700,
-                    onTap: () => Navigator.push(
+                    const SizedBox(height: 16),
+                    _buildMenuCard(
                       context,
-                      MaterialPageRoute(builder: (context) => const SumGeneratorPage()),
+                      title: 'Sum Generator',
+                      subtitle: 'Generate math challenges!',
+                      icon: Icons.calculate,
+                      color: Colors.blue.shade700,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SumGeneratorPage()),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -659,7 +661,12 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       ),
       body: Container(
         decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: isDark ? [Colors.black, Colors.grey.shade900] : [Colors.pink.shade50, Colors.white])),
-        child: Column(children: [if (_isLoading) LinearProgressIndicator(color: isDark ? Colors.pinkAccent : Colors.pink), Expanded(child: _wordPairs.isEmpty ? _buildEmptyState() : _buildWordPreviewList()), _buildActionButtons()]),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(children: [if (_isLoading) LinearProgressIndicator(color: isDark ? Colors.pinkAccent : Colors.pink), Expanded(child: _wordPairs.isEmpty ? _buildEmptyState() : _buildWordPreviewList()), _buildActionButtons()]),
+          ),
+        ),
       ),
     );
   }

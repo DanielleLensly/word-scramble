@@ -47,3 +47,5 @@ app.*.map.json
 # Signing files
 android/key.properties
 android/app/*.jks
+# Firebase
+.firebase/
