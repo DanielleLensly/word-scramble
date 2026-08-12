@@ -5,7 +5,7 @@ description: "A fun and interactive word scramble and math challenge tool with O
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
-version: 1.0.0+5
+version: 1.1.0+6
 
 environment:
   sdk: ^3.11.1
