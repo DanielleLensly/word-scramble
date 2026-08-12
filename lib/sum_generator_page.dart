@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'pdf_style_dialog.dart';
 import 'sum_generator/sum_generator.dart';
 import 'theme_manager.dart';
 
@@ -26,64 +27,95 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
     });
   }
 
-  Future<void> _printSums() async {
+  Future<void> _showPdfStyleSelectionDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => PdfStyleSelectionDialog(
+        themeColor: Colors.blue,
+        onStyleSelected: (isFun) => _printSums(isFun: isFun),
+      ),
+    );
+  }
+
+  Future<void> _printSums({required bool isFun}) async {
     if (_generatedSums.isEmpty) return;
 
     final pdf = pw.Document();
+    final primaryColor = isFun ? PdfColors.blue : PdfColors.black;
+    final headerColor = isFun ? PdfColors.blue700 : PdfColors.black;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
         build: (context) => [
           pw.Header(
             level: 0,
-            child: pw.Text(
-              'Math Challenge - Grade $_selectedGrade',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blue,
-              ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  isFun ? 'Math Challenge - Grade $_selectedGrade' : 'Math Worksheet (Grade $_selectedGrade)',
+                  style: pw.TextStyle(
+                    fontSize: isFun ? 22 : 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+                pw.Text(
+                  'Name: ____________________',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+              ],
             ),
           ),
-          pw.Padding(padding: const pw.EdgeInsets.only(bottom: 20)),
-          pw.Wrap(
-            spacing: 30,
-            runSpacing: 25,
+          pw.Padding(padding: const pw.EdgeInsets.only(bottom: 15)),
+          pw.GridView(
+            crossAxisCount: 2,
+            childAspectRatio: 0.22,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 10,
             children: _generatedSums.asMap().entries.map((entry) {
               final index = entry.key + 1;
               final sum = entry.value;
-              return pw.SizedBox(
-                width: 240, // Increased width for larger sums
+              return pw.Container(
+                padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                decoration: isFun
+                    ? pw.BoxDecoration(
+                        border: pw.Border.all(color: PdfColors.blue100, width: 0.8),
+                        borderRadius: pw.BorderRadius.circular(6),
+                      )
+                    : null,
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('$index) $sum', style: const pw.TextStyle(fontSize: 14)),
-                    pw.Text('________', style: const pw.TextStyle(fontSize: 14)),
+                    pw.Text('$index) $sum', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: headerColor)),
+                    pw.Text('________', style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey600)),
                   ],
                 ),
               );
             }).toList(),
           ),
-          pw.Padding(padding: const pw.EdgeInsets.only(top: 40)),
-          pw.Divider(color: PdfColors.blue),
+          pw.Padding(padding: const pw.EdgeInsets.only(top: 25)),
+          pw.Divider(color: primaryColor, thickness: 1),
           pw.Text(
             'Answer Key',
             style: pw.TextStyle(
-              fontSize: 14,
+              fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               color: PdfColors.grey700,
             ),
           ),
-          pw.Padding(padding: const pw.EdgeInsets.only(top: 10)),
+          pw.Padding(padding: const pw.EdgeInsets.only(top: 6)),
           pw.Wrap(
-            spacing: 20,
-            runSpacing: 10,
+            spacing: 16,
+            runSpacing: 6,
             children: _generatedSums.asMap().entries.map((entry) {
               final index = entry.key + 1;
               final sum = entry.value;
               return pw.Text(
                 '$index) ${sum.answer}',
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
               );
             }).toList(),
           ),
@@ -273,7 +305,7 @@ class _SumGeneratorPageState extends State<SumGeneratorPage> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _printSums,
+            onPressed: _showPdfStyleSelectionDialog,
             icon: const Icon(Icons.picture_as_pdf),
             label: const Text('Print Math Worksheet (PDF)'),
             style: ElevatedButton.styleFrom(

@@ -10,41 +10,25 @@ class Grade6Generator extends SumGenerator {
   MathSum generateSum() {
     final int choice = random.nextInt(4);
     if (choice == 0) {
-      final a = random.nextInt(9000) + 1000; // 1000-9999
-      final b = random.nextInt(900) + 100; // 100-999
-      return MathSum(
-        operand1: a,
-        operand2: b,
-        operation: Operation.multiplication,
-        answer: a * b,
-      );
+      // Multiplication: 3-digit by 2-digit (Standard algorithm practice)
+      final a = random.nextInt(900) + 100; // 100-999
+      final b = random.nextInt(90) + 10;   // 10-99
+      return MathSum(operand1: a, operand2: b, operation: Operation.multiplication, answer: a * b);
     } else if (choice == 1) {
-      final a = random.nextInt(1001) + 1000; // 1000-2000
-      final b = random.nextInt(900) + 100; // 100-999 divisor
-      return MathSum(
-        operand1: a * b,
-        operand2: b,
-        operation: Operation.division,
-        answer: a,
-      );
+      // Division: 4 or 5-digit by 2-digit (Long division practice)
+      final q = random.nextInt(900) + 100; // Quotient 100-999
+      final d = random.nextInt(89) + 11;   // Divisor 11-99
+      return MathSum(operand1: q * d, operand2: d, operation: Operation.division, answer: q);
     } else if (choice == 2) {
-      final a = random.nextInt(9000000) + 10000000; // 10M-19M
-      final b = random.nextInt(9000000) + 10000000; // 10M-19M
-      return MathSum(
-        operand1: a,
-        operand2: b,
-        operation: Operation.addition,
-        answer: a + b,
-      );
+      // Addition within 1,000,000
+      final a = random.nextInt(900000) + 10000;
+      final b = random.nextInt(900000) + 10000;
+      return MathSum(operand1: a, operand2: b, operation: Operation.addition, answer: a + b);
     } else {
-      final a = random.nextInt(9000000) + 10000000; // 10M-19M
-      final b = random.nextInt(9000000) + 1000000; // 1M-10M
-      return MathSum(
-        operand1: a,
-        operand2: b,
-        operation: Operation.subtraction,
-        answer: a - b,
-      );
+      // Subtraction within 1,000,000
+      final a = random.nextInt(900000) + 100000;
+      final b = random.nextInt(a - 10000) + 5000;
+      return MathSum(operand1: a, operand2: b, operation: Operation.subtraction, answer: a - b);
     }
   }
 }

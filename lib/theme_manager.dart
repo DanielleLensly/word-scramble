@@ -17,22 +17,18 @@ class ThemeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          isDark ? 'Dark' : 'Light',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-        Switch(
-          value: isDark,
-          onChanged: (val) async {
-            themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setBool('isDarkMode', val);
-          },
-        ),
-      ],
+    return IconButton(
+      icon: Icon(
+        isDark ? Icons.light_mode : Icons.dark_mode,
+        color: Colors.white,
+      ),
+      tooltip: isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme',
+      onPressed: () async {
+        final newIsDark = !isDark;
+        themeNotifier.value = newIsDark ? ThemeMode.dark : ThemeMode.light;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isDarkMode', newIsDark);
+      },
     );
   }
 }

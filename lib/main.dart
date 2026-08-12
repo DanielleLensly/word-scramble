@@ -13,23 +13,25 @@ import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 import 'package:docx_to_text/docx_to_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-// import 'sum_generator_page.dart'; // Removed for first release
+import 'age_word_presets.dart';
+import 'pdf_style_dialog.dart';
+import 'sum_generator_page.dart';
 import 'theme_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeManager.init();
-  runApp(const WordScramblerApp());
+  runApp(const WordScrambleApp());
 }
 
-class WordScramblerApp extends StatelessWidget {
-  const WordScramblerApp({super.key});
+class WordScrambleApp extends StatelessWidget {
+  const WordScrambleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
-      builder: (_, mode, _) {
+      builder: (context, mode, child) {
         return MaterialApp(
           title: 'Scramble Quest',
           debugShowCheckedModeBanner: false,
@@ -61,12 +63,9 @@ class WordScramblerApp extends StatelessWidget {
   }
 }
 
-// ThemeToggle moved to theme_manager.dart
-
 class WordPair {
   final String original;
   final String scrambled;
-
   WordPair({required this.original, required this.scrambled});
 }
 
@@ -114,11 +113,7 @@ class MainMenuPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       shadows: [
-                        Shadow(
-                          color: Colors.black26,
-                          offset: Offset(2, 2),
-                          blurRadius: 4,
-                        ),
+                        Shadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 4),
                       ],
                     ),
                   ),
@@ -131,9 +126,19 @@ class MainMenuPage extends StatelessWidget {
                     color: Colors.pink,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const ScrambleMainPage(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const ScrambleMainPage()),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildMenuCard(
+                    context,
+                    title: 'Sum Generator',
+                    subtitle: 'Generate math challenges!',
+                    icon: Icons.calculate,
+                    color: Colors.blue.shade700,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SumGeneratorPage()),
                     ),
                   ),
                 ],
@@ -145,14 +150,7 @@ class MainMenuPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildMenuCard(BuildContext context, {required String title, required String subtitle, required IconData icon, required Color color, required VoidCallback onTap}) {
     return Card(
       elevation: 5,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -165,10 +163,7 @@ class MainMenuPage extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(15),
-                ),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(15)),
                 child: Icon(icon, color: color, size: 40),
               ),
               const SizedBox(width: 20),
@@ -176,18 +171,8 @@ class MainMenuPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
+                    Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+                    Text(subtitle, style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   ],
                 ),
               ),
@@ -202,37 +187,16 @@ class MainMenuPage extends StatelessWidget {
 
 class ScrambleMainPage extends StatefulWidget {
   const ScrambleMainPage({super.key});
-
-  @override
-  State<ScrambleMainPage> createState() => _ScrambleMainPageState();
+  @override State<ScrambleMainPage> createState() => _ScrambleMainPageState();
 }
 
 class _ScrambleMainPageState extends State<ScrambleMainPage> {
   final List<WordPair> _wordPairs = [];
   bool _isLoading = false;
   bool _isUppercase = true;
+  bool _hideAnswers = false;
   final ImagePicker _picker = ImagePicker();
-  DateTime? _lastBackPressTime;
   final ScrollController _scrollController = ScrollController();
-
-  bool _isWordSuspicious(String word) {
-    if (word.isEmpty) return false;
-    final clean = word.toLowerCase();
-
-    // 1. Symbol/Digit check
-    if (clean.contains(RegExp(r"[^a-z\u00C0-\u024F\-\']"))) return true;
-
-    // 2. No vowels (a, e, i, o, u, y)
-    if (!clean.contains(RegExp(r"[aeiouy]"))) return true;
-
-    // 3. Repeated characters (3+ same in a row, like 'aaab')
-    if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
-
-    // 4. Repeated short words (like 'uu', 'aa', 'ii', 'll')
-    if (clean.length == 2 && clean[0] == clean[1]) return true;
-
-    return false;
-  }
 
   @override
   void dispose() {
@@ -243,11 +207,7 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-        );
+        _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
       }
     });
   }
@@ -256,41 +216,35 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     if (word.length <= 1) return word;
     List<String> letters = word.split('')..shuffle();
     String scrambled = letters.join('');
-    if (scrambled == word && word.length > 1) {
-      return _scrambleWord(word);
-    }
+    if (scrambled == word && word.length > 1) return _scrambleWord(word);
     return scrambled;
   }
 
-  String _formatScrambled(String word) {
-    return _isUppercase ? word.toUpperCase() : word.toLowerCase();
-  }
+  String _formatScrambled(String word) => _isUppercase ? word.toUpperCase() : word.toLowerCase();
 
   void _addWordsToList(List<String> words) {
     final List<String> duplicates = [];
+    final existingWords = _wordPairs.map((p) => p.original.toLowerCase()).toSet();
+
     setState(() {
       for (var word in words) {
         final cleaned = word.trim();
         if (cleaned.length >= 2) {
-          if (_wordPairs.any(
-            (p) => p.original.toLowerCase() == cleaned.toLowerCase(),
-          )) {
+          if (existingWords.contains(cleaned.toLowerCase())) {
             duplicates.add(cleaned);
           } else {
-            _wordPairs.add(
-              WordPair(original: cleaned, scrambled: _scrambleWord(cleaned)),
-            );
+            existingWords.add(cleaned.toLowerCase());
+            _wordPairs.add(WordPair(original: cleaned, scrambled: _scrambleWord(cleaned)));
           }
         }
       }
     });
+
     if (words.length > duplicates.length && mounted) {
       final addedCount = words.length - duplicates.length;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Added $addedCount word${addedCount > 1 ? 's' : ''} to list',
-          ),
+          content: Text('Added $addedCount word${addedCount > 1 ? 's' : ''} to list'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
         ),
@@ -310,186 +264,107 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
       );
     }
     _scrollToBottom();
+    _saveHistory();
   }
 
-  Future<void> _saveUploadToHistory(List<String> words) async {
+  Future<void> _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = _wordPairs.map((p) => {'original': p.original, 'scrambled': p.scrambled}).toList();
+    await prefs.setString('current_scramble_list', jsonEncode(data));
+  }
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('current_scramble_list');
+    if (data != null) {
+      final List<dynamic> decoded = jsonDecode(data);
+      setState(() {
+        _wordPairs.clear();
+        for (var item in decoded) {
+          _wordPairs.add(WordPair(original: item['original'], scrambled: item['scrambled']));
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _saveUploadToHistory(List<String> words, {String? customName}) async {
     if (words.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList('upload_history') ?? [];
-
-    final batch = {'date': DateTime.now().toIso8601String(), 'words': words};
-    history.insert(0, jsonEncode(batch)); // newest first
-    if (history.length > 20) {
-      history = history.sublist(0, 20); // Keep last 20 uploads
-    }
-
+    final batch = {'date': DateTime.now().toIso8601String(), 'words': words, 'name': customName};
+    history.insert(0, jsonEncode(batch));
+    if (history.length > 20) history = history.sublist(0, 20);
     await prefs.setStringList('upload_history', history);
   }
 
   Future<void> _showPastUploadsDialog() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList('upload_history') ?? [];
-
     if (history.isEmpty) {
       if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('No Past Uploads'),
-          content: const Text("You haven't imported any word lists yet!"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      showDialog(context: context, builder: (context) => AlertDialog(title: const Text('No Past Uploads'), content: const Text("You haven't imported any word lists yet!"), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]));
       return;
     }
-
     if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.history, color: Colors.indigo),
-            SizedBox(width: 10),
-            Text('Past Uploads'),
-          ],
-        ),
+        title: const Row(children: [Icon(Icons.history, color: Colors.indigo), SizedBox(width: 10), Text('Past Uploads')]),
         content: SizedBox(
-          width: double.maxFinite,
-          height: 400,
+          width: double.maxFinite, height: 400,
           child: ListView.builder(
             itemCount: history.length,
             itemBuilder: (context, index) {
               final batch = jsonDecode(history[index]);
               final wordsList = List<String>.from(batch['words']);
               final date = DateTime.parse(batch['date']);
-              final displayDate =
-                  "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+              final String? customName = batch['name'];
+              final displayDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
               return Card(
                 elevation: 2,
                 child: ListTile(
                   leading: const Icon(Icons.history, color: Colors.indigo),
-                  title: Text(
-                    displayDate,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  subtitle: Text(
-                    "${wordsList.length} words: ${wordsList.take(4).join(', ')}...",
-                  ),
+                  title: Text(customName != null && customName.isNotEmpty ? customName : displayDate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: Text("${wordsList.length} words: ${wordsList.take(4).join(', ')}..."),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showHistoryDetailDialog(wordsList, displayDate);
-                  },
+                  onTap: () { Navigator.pop(context); _showHistoryDetailDialog(wordsList, displayDate, customName: customName); },
                 ),
               );
             },
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
       ),
     );
   }
 
-  void _showHistoryDetailDialog(List<String> words, String dateLabel) {
+  void _showHistoryDetailDialog(List<String> words, String dateLabel, {String? customName}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Words from This Upload',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              dateLabel,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(customName != null && customName.isNotEmpty ? customName : 'Words from This Upload', style: const TextStyle(fontSize: 18)), Text(dateLabel, style: const TextStyle(fontSize: 12, color: Colors.grey))]),
         content: SizedBox(
-          width: double.maxFinite,
-          height: 350,
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: words.length,
-                  itemBuilder: (context, index) => ListTile(
-                    dense: true,
-                    leading: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: Colors.indigo.shade50,
-                      child: Text(
-                        "${index + 1}",
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.indigo,
-                        ),
-                      ),
-                    ),
-                    title: Text(words[index]),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    _addWordsToList(words);
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.add_circle),
-                  label: const Text(
-                    'Add All to List',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          width: double.maxFinite, height: 350,
+          child: Column(children: [
+            Expanded(child: ListView.builder(itemCount: words.length, itemBuilder: (context, index) => ListTile(dense: true, leading: CircleAvatar(radius: 12, backgroundColor: Colors.indigo.shade50, child: Text("${index + 1}", style: const TextStyle(fontSize: 10, color: Colors.indigo))), title: Text(words[index])))),
+            const SizedBox(height: 16),
+            SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () { _addWordsToList(words); Navigator.pop(context); }, icon: const Icon(Icons.add_circle), label: const Text('Add All to List', style: TextStyle(fontWeight: FontWeight.bold)))),
+          ]),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showPastUploadsDialog(); // Go back to history list
-            },
-            child: const Text('Back to History'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () { Navigator.pop(context); _showPastUploadsDialog(); }, child: const Text('Back to History'))],
       ),
     );
   }
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? photo = await _picker.pickImage(source: source);
-    if (photo != null) {
-      _processImage(photo.path);
-    }
+    if (photo != null) _processImage(photo.path);
   }
 
   Future<void> _processImage(String path) async {
@@ -497,19 +372,11 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
     try {
       final inputImage = InputImage.fromFilePath(path);
-      final RecognizedText recognizedText = await textRecognizer.processImage(
-        inputImage,
-      );
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
       List<String> extractedWords = _extractWords(recognizedText.text);
-      if (mounted) {
-        _showReviewDialog(extractedWords);
-      }
+      if (extractedWords.isNotEmpty && mounted) _showReviewDialog(extractedWords);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error recognizing text: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error recognizing text: $e')));
     } finally {
       textRecognizer.close();
       setState(() => _isLoading = false);
@@ -517,65 +384,37 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   }
 
   void _showReviewDialog(List<String> words) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ReviewWordsDialog(
-        initialWords: words,
-        onConfirmed: (confirmedWords) {
-          _saveUploadToHistory(confirmedWords);
-          _addWordsToList(confirmedWords);
-        },
-      ),
-    );
+    showDialog(context: context, barrierDismissible: false, builder: (context) => ReviewWordsDialog(initialWords: words, onConfirmed: (confirmedWords) async { await _saveUploadToHistory(confirmedWords); _addWordsToList(confirmedWords); }));
   }
 
   Future<void> _pickFiles() async {
     setState(() => _isLoading = true);
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['txt', 'pdf', 'docx', 'xlsx', 'jpg', 'jpeg', 'png'],
-        allowMultiple: true,
-      );
-
+      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['txt', 'pdf', 'docx', 'xlsx', 'jpg', 'jpeg', 'png'], allowMultiple: true);
       if (result != null) {
         for (var file in result.files) {
           await _processFile(file);
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking files: $e')));
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking files: $e')));
+    } finally { setState(() => _isLoading = false); }
   }
 
   Future<void> _processFile(PlatformFile file) async {
     List<String> wordsFromFile = [];
     Uint8List? bytes = file.bytes;
-    if (bytes == null && file.path != null) {
-      bytes = await File(file.path!).readAsBytes();
-    }
+    if (bytes == null && file.path != null) bytes = await File(file.path!).readAsBytes();
     if (bytes == null) return;
-
     final String extension = file.extension?.toLowerCase() ?? '';
-
     if (extension == 'txt') {
-      final content = String.fromCharCodes(bytes);
-      wordsFromFile = _extractWords(content);
+      wordsFromFile = _extractWords(String.fromCharCodes(bytes));
     } else if (extension == 'pdf') {
       final sf.PdfDocument document = sf.PdfDocument(inputBytes: bytes);
-      final String content = sf.PdfTextExtractor(document).extractText();
-      wordsFromFile = _extractWords(content);
+      wordsFromFile = _extractWords(sf.PdfTextExtractor(document).extractText());
       document.dispose();
     } else if (extension == 'docx') {
-      final content = docxToText(bytes);
-      wordsFromFile = _extractWords(content);
+      wordsFromFile = _extractWords(docxToText(bytes));
     } else if (extension == 'xlsx') {
       final excel = Excel.decodeBytes(bytes);
       for (var table in excel.tables.keys) {
@@ -587,208 +426,50 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
           }
         }
       }
-    } else if (['jpg', 'jpeg', 'png'].contains(extension)) {
-      if (file.path != null) {
-        final textRecognizer = TextRecognizer(
-          script: TextRecognitionScript.latin,
-        );
-        try {
-          final inputImage = InputImage.fromFilePath(file.path!);
-          final RecognizedText recognizedText = await textRecognizer
-              .processImage(inputImage);
-          wordsFromFile = _extractWords(recognizedText.text);
-        } finally {
-          textRecognizer.close();
-        }
-      }
     }
-    _saveUploadToHistory(wordsFromFile);
+    else if (['jpg', 'jpeg', 'png'].contains(extension) && file.path != null) {
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      try { final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFilePath(file.path!)); wordsFromFile = _extractWords(recognizedText.text); } finally { textRecognizer.close(); }
+    }
+    await _saveUploadToHistory(wordsFromFile);
     _addWordsToList(wordsFromFile);
   }
 
-  List<String> _extractWords(String text) {
-    // Only split on whitespace and common word-listing separators
-    return text
-        .split(RegExp(r'[\s\n\r,;:]+'))
-        .map((s) => s.trim())
-        // Trim common surrounding punctuation like dots, etc., but keep what's inside
-        .map(
-          (s) => s.replaceAll(
-            RegExp(r'^[.!?\(\)\[\]{}"]+|[.!?\(\)\[\]{}"]+$'),
-            '',
-          ),
-        )
-        .where((s) => s.isNotEmpty && s.length >= 2)
-        .toList();
-  }
+  List<String> _extractWords(String text) => text.split(RegExp(r'[\s\n\r,;:]+')).map((s) => s.trim()).map((s) => s.replaceAll(RegExp(r'^[.!?\(\)\[\]{}"]+|[.!?\(\)\[\]{}"]+$'), '')).where((s) => s.isNotEmpty && s.length >= 2).toList();
 
-  void _removeWordPair(int index) {
-    setState(() {
-      _wordPairs.removeAt(index);
-    });
-  }
+  void _removeWordPair(int index) { setState(() { _wordPairs.removeAt(index); }); _saveHistory(); }
 
   void _clearWords() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear List?'),
-        content: const Text(
-          'Are you sure you want to remove all words from the current list? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              setState(() {
-                _wordPairs.clear();
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Clear All'),
-          ),
-        ],
-      ),
-    );
+    showDialog(context: context, builder: (context) => AlertDialog(title: const Text('Clear List?'), content: const Text('Are you sure you want to remove all words? This cannot be undone.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), onPressed: () { setState(() => _wordPairs.clear()); Navigator.pop(context); _saveHistory(); }, child: const Text('Clear All'))]));
   }
 
   Future<void> _launchPrivacyPolicyUrl() async {
-    final Uri url = Uri.parse(
-      'https://docs.google.com/document/d/1bLDYvlPBiM_3pRkdquVxBZ-oa4kAyZH3lL53QEhghCc/edit?tab=t.0',
-    );
-    
-    // Parental Gate check before launching external URL
-    final bool parentVerified = await _showParentalGate();
-    if (!parentVerified) return;
-
+    final Uri url = Uri.parse('https://github.com/DanielleLensly/word-scramble/blob/main/PRIVACY_POLICY.md');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open Privacy Policy link')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open Privacy Policy link')));
     }
-  }
-
-  Future<bool> _showParentalGate() async {
-    final num1 = 5 + (DateTime.now().millisecond % 5);
-    final num2 = 6 + (DateTime.now().microsecond % 5);
-    final answer = num1 + num2;
-    final controller = TextEditingController();
-    String? errorText;
-
-    final bool? result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Parental Verification'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Please ask your parent to solve this simple math question to continue:',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                '$num1 + $num2 = ?',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.pink),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Answer',
-                  errorText: errorText,
-                  border: const OutlineInputBorder(),
-                ),
-                onSubmitted: (val) {
-                  if (val == answer.toString()) {
-                    Navigator.pop(context, true);
-                  } else {
-                    setDialogState(() => errorText = 'Incorrect. Try again!');
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (controller.text == answer.toString()) {
-                  Navigator.pop(context, true);
-                } else {
-                  setDialogState(() => errorText = 'Incorrect. Try again!');
-                }
-              },
-              child: const Text('Verify'),
-            ),
-          ],
-        ),
-      ),
-    );
-    return result ?? false;
   }
 
   void _showPrivacyPolicyDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.shield_outlined, color: Colors.pink),
-            SizedBox(width: 10),
-            Text('Privacy Policy'),
-          ],
-        ),
-        content: const Text(
-          'Scramble Quest does not collect, store, or share any personal data. '
-          'All word lists stay on your device. Tap below to read the full policy.',
-        ),
+        title: const Row(children: [Icon(Icons.shield_outlined, color: Colors.pink), SizedBox(width: 10), Text('Privacy Policy')]),
+        content: const Text('Scramble Quest does not collect any personal data. Tap below to read the full policy.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
           ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              _launchPrivacyPolicyUrl();
-            },
+            onPressed: () { Navigator.pop(context); _launchPrivacyPolicyUrl(); },
             icon: const Icon(Icons.open_in_new, size: 16),
             label: const Text('View Privacy Policy'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.pink, foregroundColor: Colors.white),
           ),
         ],
       ),
     );
   }
 
-  void _reshuffleScrambled(int index) {
-    setState(() {
-      _wordPairs[index] = WordPair(
-        original: _wordPairs[index].original,
-        scrambled: _scrambleWord(_wordPairs[index].original),
-      );
-    });
-  }
+  void _reshuffleScrambled(int index) { setState(() { _wordPairs[index] = WordPair(original: _wordPairs[index].original, scrambled: _scrambleWord(_wordPairs[index].original)); }); _saveHistory(); }
 
   void _showAddManualWordDialog() {
     final controller = TextEditingController();
@@ -796,336 +477,309 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Add Word Manually'),
-            content: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'Enter a spelling word',
-                errorText: errorText,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              onSubmitted: (val) {
-                final text = val.trim();
-                if (text.isEmpty) {
-                  setDialogState(() => errorText = 'Please enter a word.');
-                } else if (text.length < 2) {
-                  setDialogState(
-                    () => errorText = 'Word must be at least 2 letters.',
-                  );
-                } else if (_isWordSuspicious(text) && errorText == null) {
-                  setDialogState(
-                    () => errorText = 'Suspicious spelling. Sure?',
-                  );
-                } else {
-                  _addWordsToList([text]);
-                  Navigator.pop(context);
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Words Manually'),
+          content: TextField(controller: controller, maxLines: 5, decoration: InputDecoration(hintText: 'Enter words separated by spaces, commas or new lines', errorText: errorText, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))), autofocus: true, textCapitalization: TextCapitalization.words),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isEmpty) {
+                setDialogState(() => errorText = 'Please enter some words.');
+              } else {
+                final words = _extractWords(text);
+                if (words.isEmpty) {
+                  setDialogState(() => errorText = 'No valid words found.');
+                } else { 
+                  await _saveUploadToHistory(words, customName: "Manual Entry"); 
+                  _addWordsToList(words); 
+                  if (context.mounted) Navigator.pop(context); 
                 }
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final text = controller.text.trim();
-                  if (text.isEmpty) {
-                    setDialogState(() => errorText = 'Please enter a word.');
-                  } else if (text.length < 2) {
-                    setDialogState(
-                      () => errorText = 'Word must be at least 2 letters.',
-                    );
-                  } else if (_isWordSuspicious(text) && errorText == null) {
-                    // Show warning first if it's suspicious but not yet flagged
-                    setDialogState(
-                      () => errorText = 'Suspicious spelling. Sure?',
-                    );
-                  } else {
-                    _addWordsToList([text]);
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          );
-        },
+              }
+            }, child: const Text('Add All')),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _generateAndPrintPDF() async {
-    if (_wordPairs.isEmpty) return;
-
-    final pdf = pw.Document();
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Header(
-            level: 0,
-            child: pw.Text(
-              'Spelling Scramble Challenge!',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.pink,
-              ),
-            ),
-          ),
-          pw.Padding(padding: const pw.EdgeInsets.only(bottom: 20)),
-          pw.TableHelper.fromTextArray(
-            headers: ['Scrambled Letters', 'Your Answer'],
-            data: _wordPairs
-                .map(
-                  (pair) => [
-                    _formatScrambled(pair.scrambled),
-                    '____________________',
-                  ],
-                )
-                .toList(),
-            headerStyle: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.white,
-            ),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.pink),
-            cellAlignment: pw.Alignment.centerLeft,
-            cellHeight: 40,
-          ),
-          pw.Padding(padding: const pw.EdgeInsets.only(top: 40)),
-          pw.Divider(color: PdfColors.pink),
-          pw.Text(
-            'Teacher/Parent Key (Fold or cut here)',
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontStyle: pw.FontStyle.italic,
-              color: PdfColors.grey700,
-            ),
-          ),
-          pw.Padding(padding: const pw.EdgeInsets.only(top: 10)),
-          pw.Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _wordPairs
-                .map(
-                  (pair) => pw.RichText(
-                    text: pw.TextSpan(
-                      children: [
-                        pw.TextSpan(
-                          text: '${_formatScrambled(pair.scrambled)} = ',
-                          style: const pw.TextStyle(fontSize: 10),
-                        ),
-                        pw.TextSpan(
-                          text: pair.original.toLowerCase(),
-                          style: pw.TextStyle(
-                            fontSize: 10,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
+  void _showSaveCurrentListDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Current List'),
+        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Enter a name for this list (optional)', border: OutlineInputBorder()), autofocus: true, textCapitalization: TextCapitalization.words),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () async {
+            final name = controller.text.trim();
+            final words = _wordPairs.map((p) => p.original).toList();
+            await _saveUploadToHistory(words, customName: name.isNotEmpty ? name : "Saved List");
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('List saved to Past Uploads'), backgroundColor: Colors.green));
+            }
+          }, child: const Text('Save')),
         ],
       ),
     );
+  }
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+  Future<void> _showPdfStyleSelectionDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => PdfStyleSelectionDialog(
+        themeColor: Colors.pink,
+        onStyleSelected: (isFun) => _generateAndPrintPDF(isFun: isFun),
+      ),
     );
+  }
+
+  Future<void> _generateAndPrintPDF({required bool isFun}) async {
+    if (_wordPairs.isEmpty) return;
+    final pdf = pw.Document();
+
+    final primaryColor = isFun ? PdfColors.pink : PdfColors.black;
+    final headerColor = isFun ? PdfColors.pink : PdfColors.grey900;
+
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
+      build: (context) => [
+        pw.Header(
+          level: 0,
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                isFun ? 'Spelling Scramble Challenge!' : 'Spelling Scramble Worksheet',
+                style: pw.TextStyle(
+                  fontSize: isFun ? 22 : 18,
+                  fontWeight: pw.FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+              pw.Text(
+                'Name: ____________________',
+                style: const pw.TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        pw.Padding(padding: const pw.EdgeInsets.only(bottom: 15)),
+        pw.GridView(
+          crossAxisCount: 2,
+          childAspectRatio: 0.18,
+          crossAxisSpacing: 20,
+          mainAxisSpacing: 10,
+          children: _wordPairs.asMap().entries.map((entry) {
+            final idx = entry.key + 1;
+            final pair = entry.value;
+            return pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: isFun
+                  ? pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.pink100, width: 0.8),
+                      borderRadius: pw.BorderRadius.circular(6),
+                    )
+                  : null,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    '$idx) ${_formatScrambled(pair.scrambled)}',
+                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: headerColor),
+                  ),
+                  pw.Text('_____________', style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey600)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        pw.Padding(padding: const pw.EdgeInsets.only(top: 25)),
+        pw.Divider(color: primaryColor, thickness: 1),
+        pw.Text(
+          'Teacher/Parent Key',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+        ),
+        pw.Padding(padding: const pw.EdgeInsets.only(top: 6)),
+        pw.Wrap(
+          spacing: 12,
+          runSpacing: 6,
+          children: _wordPairs.asMap().entries.map((entry) {
+            final idx = entry.key + 1;
+            final pair = entry.value;
+            return pw.Text(
+              '$idx) ${pair.original.toLowerCase()}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            );
+          }).toList(),
+        ),
+      ],
+    ));
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (didPop) return;
-        final now = DateTime.now();
-        if (_lastBackPressTime == null ||
-            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Press back again to exit'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        } else {
-          SystemNavigator.pop();
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            '✨ Kids Scramble Quest ✨',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('✨ Scramble Quest ✨', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
+        backgroundColor: isDark ? Colors.grey.shade900 : Colors.pink,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _hideAnswers ? Icons.visibility_off : Icons.visibility,
               color: Colors.white,
-              fontSize: 18,
+            ),
+            onPressed: () => setState(() => _hideAnswers = !_hideAnswers),
+            tooltip: _hideAnswers ? 'Show original words' : 'Hide original words (Scrambled only)',
+          ),
+          const ThemeToggle(),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => setState(() => _isUppercase = !_isUppercase),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            child: Text(
+              _isUppercase ? 'ABC' : 'abc',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
-          backgroundColor: isDark ? Colors.grey.shade900 : Colors.pink,
-          actions: [
-            const ThemeToggle(),
-            const SizedBox(width: 8),
-            Row(
-              children: [
-                Text(
-                  _isUppercase ? 'ABC' : 'abc',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                Switch(
-                  value: _isUppercase,
-                  onChanged: (val) => setState(() => _isUppercase = val),
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: Colors.pinkAccent,
-                ),
-              ],
-            ),
-            IconButton(
-              icon: const Icon(Icons.shield_outlined, color: Colors.white),
-              onPressed: _showPrivacyPolicyDialog,
-              tooltip: 'Privacy Policy',
-            ),
-            if (_wordPairs.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.delete_sweep, color: Colors.white),
-                onPressed: _clearWords,
-                tooltip: 'Clear All',
-              ),
+          IconButton(icon: const Icon(Icons.shield_outlined, color: Colors.white), onPressed: _showPrivacyPolicyDialog, tooltip: 'Privacy Policy'),
+          if (_wordPairs.isNotEmpty) ...[
+            IconButton(icon: const Icon(Icons.save_outlined, color: Colors.white), onPressed: _showSaveCurrentListDialog, tooltip: 'Save Current List'),
+            IconButton(icon: const Icon(Icons.delete_sweep, color: Colors.white), onPressed: _clearWords, tooltip: 'Clear All'),
           ],
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDark 
-                ? [Colors.black, Colors.grey.shade900]
-                : [Colors.pink.shade50, Colors.white],
-            ),
-          ),
-          child: Column(
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: isDark ? [Colors.black, Colors.grey.shade900] : [Colors.pink.shade50, Colors.white])),
+        child: Column(children: [if (_isLoading) LinearProgressIndicator(color: isDark ? Colors.pinkAccent : Colors.pink), Expanded(child: _wordPairs.isEmpty ? _buildEmptyState() : _buildWordPreviewList()), _buildActionButtons()]),
+      ),
+    );
+  }
+
+  void _showAgePresetDialog() {
+    int selectedCount = 10; // Default word count
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Row(
             children: [
-              if (_isLoading) LinearProgressIndicator(color: isDark ? Colors.pinkAccent : Colors.pink),
+              Icon(Icons.child_care, color: Colors.purple),
+              SizedBox(width: 10),
               Expanded(
-                child: _wordPairs.isEmpty
-                    ? _buildEmptyState()
-                    : _buildWordPreviewList(),
+                child: Text(
+                  'Generate Words by Age',
+                  style: TextStyle(fontSize: 18),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              _buildActionButtons(),
             ],
           ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('1. Choose number of words:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [5, 10, 20].map((count) {
+                      final isSelected = selectedCount == count;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: ChoiceChip(
+                          label: Text('$count Words'),
+                          selected: isSelected,
+                          selectedColor: Colors.purple.shade100,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.purple.shade900 : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setDialogState(() => selectedCount = count);
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('2. Select age group:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...AgeWordPresets.presets.keys.map((category) {
+                    final allWords = List<String>.from(AgeWordPresets.presets[category]!);
+                    allWords.shuffle();
+                    final selectedWords = allWords.take(selectedCount).toList();
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const Icon(Icons.auto_awesome, color: Colors.purple),
+                        title: Text(category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text('$selectedCount words (${selectedWords.take(3).join(', ')}...)'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await _saveUploadToHistory(selectedWords, customName: '$category ($selectedCount words)');
+                          _addWordsToList(selectedWords);
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.auto_stories,
-              size: 80,
-              color: Colors.pink.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Welcome! How would you like to start your spelling list?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 30),
-            _buildBigButton(
-              icon: Icons.camera_alt,
-              label: 'Take a Photo',
-              color: Colors.pinkAccent,
-              onPressed: () => _pickImage(ImageSource.camera),
-            ),
-            const SizedBox(height: 12),
-            _buildBigButton(
-              icon: Icons.image,
-              label: 'Upload Image (Gallery)',
-              color: Colors.blueAccent,
-              onPressed: () => _pickImage(ImageSource.gallery),
-            ),
-            const SizedBox(height: 12),
-            _buildBigButton(
-              icon: Icons.file_upload,
-              label: 'Import File (PDF, Docs, etc.)',
-              color: Colors.orangeAccent,
-              onPressed: _pickFiles,
-            ),
-            const SizedBox(height: 12),
-            _buildBigButton(
-              icon: Icons.edit,
-              label: 'Type Words Manually',
-              color: Colors.teal,
-              onPressed: _showAddManualWordDialog,
-            ),
-
-            const SizedBox(height: 12),
-            _buildBigButton(
-              icon: Icons.history,
-              label: 'Past Uploads (History)',
-              color: Colors.indigo,
-              onPressed: _showPastUploadsDialog,
-            ),
-          ],
-        ),
+    return Center(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: SingleChildScrollView(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.auto_stories, size: 80, color: Colors.pink.withValues(alpha: 0.5)),
+          const SizedBox(height: 20),
+          const Text('Welcome! How would you like to start your spelling list?', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 30),
+          _buildBigButton(icon: Icons.child_care, label: 'Generate Words by Age', color: Colors.purple, onPressed: _showAgePresetDialog),
+          const SizedBox(height: 12),
+          _buildBigButton(icon: Icons.camera_alt, label: 'Take a Photo', color: Colors.pinkAccent, onPressed: () => _pickImage(ImageSource.camera)),
+          const SizedBox(height: 12),
+          _buildBigButton(icon: Icons.image, label: 'Upload Image (Gallery)', color: Colors.blueAccent, onPressed: () => _pickImage(ImageSource.gallery)),
+          const SizedBox(height: 12),
+          _buildBigButton(icon: Icons.file_upload, label: 'Import File (PDF, Docs, etc.)', color: Colors.orangeAccent, onPressed: _pickFiles),
+          const SizedBox(height: 12),
+          _buildBigButton(icon: Icons.edit, label: 'Type Words Manually', color: Colors.teal, onPressed: _showAddManualWordDialog),
+          const SizedBox(height: 12),
+          _buildBigButton(icon: Icons.history, label: 'Past Uploads (History)', color: Colors.indigo, onPressed: _showPastUploadsDialog),
+        ]),
       ),
-    );
+    ));
   }
 
-  Widget _buildBigButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 28),
-        label: Text(label, style: const TextStyle(fontSize: 16)),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-        ),
-      ),
-    );
+  Widget _buildBigButton({required IconData icon, required String label, required Color color, required VoidCallback onPressed}) {
+    return SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 28), label: Text(label, style: const TextStyle(fontSize: 16)), style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20), backgroundColor: color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 4)));
   }
 
   Widget _buildWordPreviewList() {
@@ -1139,78 +793,39 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
         return Card(
           elevation: 3,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
+                if (!_hideAnswers) ...[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Original', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        Text(pair.original.toLowerCase(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward, color: Colors.pinkAccent, size: 20),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Original',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        pair.original.toLowerCase(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
+                      Text(_hideAnswers ? 'Word ${index + 1}' : 'Scrambled', style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      InkWell(
+                        onTap: () => setState(() => _isUppercase = !_isUppercase),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Text(_formatScrambled(pair.scrambled), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? Colors.lightBlueAccent : Colors.blueAccent)),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.pinkAccent,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Scrambled',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        _formatScrambled(pair.scrambled),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDark ? Colors.lightBlueAccent : Colors.blueAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.orangeAccent),
-                  onPressed: () => _reshuffleScrambled(index),
-                  tooltip: 'Reshuffle',
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
-                  ),
-                  onPressed: () => _removeWordPair(index),
-                  tooltip: 'Remove',
-                ),
+                IconButton(icon: const Icon(Icons.refresh, color: Colors.orangeAccent), onPressed: () => _reshuffleScrambled(index), tooltip: 'Reshuffle'),
+                IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => _removeWordPair(index), tooltip: 'Remove'),
               ],
             ),
           ),
@@ -1222,121 +837,34 @@ class _ScrambleMainPageState extends State<ScrambleMainPage> {
   Widget _buildActionButtons() {
     if (_wordPairs.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black45 : Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _buildSmallActionIcon(
-                  Icons.camera_alt,
-                  'Photo',
-                  Colors.pinkAccent,
-                  () => _pickImage(ImageSource.camera),
-                ),
-                _buildSmallActionIcon(
-                  Icons.image,
-                  'Image',
-                  Colors.blueAccent,
-                  () => _pickImage(ImageSource.gallery),
-                ),
-                _buildSmallActionIcon(
-                  Icons.file_upload,
-                  'File',
-                  Colors.orangeAccent,
-                  _pickFiles,
-                ),
-                _buildSmallActionIcon(
-                  Icons.edit,
-                  'Type',
-                  Colors.teal,
-                  _showAddManualWordDialog,
-                ),
-                _buildSmallActionIcon(
-                  Icons.history,
-                  'Past',
-                  Colors.indigo,
-                  _showPastUploadsDialog,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _wordPairs.isEmpty || _isLoading
-                    ? null
-                    : _generateAndPrintPDF,
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Print PDF'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: isDark ? Colors.pinkAccent : Colors.pink,
-                  foregroundColor: isDark ? Colors.black : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      decoration: BoxDecoration(color: isDark ? Colors.grey.shade900 : Colors.white, boxShadow: [BoxShadow(color: isDark ? Colors.black45 : Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))]),
+      child: SafeArea(child: Column(children: [
+        Row(children: [
+          _buildSmallActionIcon(Icons.child_care, 'Age', Colors.purple, _showAgePresetDialog),
+          _buildSmallActionIcon(Icons.camera_alt, 'Photo', Colors.pinkAccent, () => _pickImage(ImageSource.camera)),
+          _buildSmallActionIcon(Icons.image, 'Image', Colors.blueAccent, () => _pickImage(ImageSource.gallery)),
+          _buildSmallActionIcon(Icons.file_upload, 'File', Colors.orangeAccent, _pickFiles),
+          _buildSmallActionIcon(Icons.edit, 'Type', Colors.teal, _showAddManualWordDialog),
+          _buildSmallActionIcon(Icons.history, 'Past', Colors.indigo, _showPastUploadsDialog),
+        ]),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _wordPairs.isEmpty || _isLoading ? null : _showPdfStyleSelectionDialog, icon: const Icon(Icons.picture_as_pdf), label: const Text('Print PDF'), style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: isDark ? Colors.pinkAccent : Colors.pink, foregroundColor: isDark ? Colors.black : Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
+      ])),
     );
   }
 
-  Widget _buildSmallActionIcon(
-    IconData icon,
-    String label,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return Expanded(
-      child: InkWell(
-        onTap: _isLoading ? null : onPressed,
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Widget _buildSmallActionIcon(IconData icon, String label, Color color, VoidCallback onPressed) {
+    return Expanded(child: InkWell(onTap: _isLoading ? null : onPressed, child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 4), Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold))])));
   }
 }
 
 class ReviewWordsDialog extends StatefulWidget {
   final List<String> initialWords;
   final Function(List<String>) onConfirmed;
-
-  const ReviewWordsDialog({
-    super.key,
-    required this.initialWords,
-    required this.onConfirmed,
-  });
-
-  @override
-  State<ReviewWordsDialog> createState() => _ReviewWordsDialogState();
+  const ReviewWordsDialog({super.key, required this.initialWords, required this.onConfirmed});
+  @override State<ReviewWordsDialog> createState() => _ReviewWordsDialogState();
 }
 
 class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
@@ -1348,75 +876,36 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   bool _isWordSuspicious(String word) {
     if (word.isEmpty) return false;
     final clean = word.toLowerCase();
-
-    // 1. Symbol/Digit check
     if (clean.contains(RegExp(r"[^a-z\u00C0-\u024F\-\']"))) return true;
-
-    // 2. No vowels (a, e, i, o, u, y) - skip common abbreviations like 'mr' if desired, but suspicious for kids
     if (!clean.contains(RegExp(r"[aeiouy]"))) return true;
-
-    // 3. Repeated characters (3+ same in a row, like 'aaab')
     if (RegExp(r"(.)\1\1").hasMatch(clean)) return true;
-
-    // 4. Repeated short words (like 'uu', 'aa', 'ii', 'll')
     if (clean.length == 2 && clean[0] == clean[1]) return true;
-
     return false;
   }
 
   @override
   void initState() {
     super.initState();
-    _controllers = widget.initialWords
-        .map((w) => TextEditingController(text: w))
-        .toList();
+    _controllers = widget.initialWords.map((w) => TextEditingController(text: w)).toList();
     _focusNodes = List.generate(_controllers.length, (_) => FocusNode());
     for (var ctrl in _controllers) {
-      ctrl.addListener(() {
-        if (mounted) {
-          setState(() {
-            _confirmedControllers.remove(ctrl);
-          });
-        }
-      });
+      ctrl.addListener(() { if (mounted) setState(() { _confirmedControllers.remove(ctrl); }); });
     }
   }
 
   void _addWordAt(int index) {
     setState(() {
       final ctrl = TextEditingController();
-      ctrl.addListener(() {
-        if (mounted) {
-          setState(() {
-            _confirmedControllers.remove(ctrl);
-          });
-        }
-      });
+      ctrl.addListener(() { if (mounted) setState(() { _confirmedControllers.remove(ctrl); }); });
       _controllers.insert(index, ctrl);
       _focusNodes.insert(index, FocusNode());
     });
-
-    // Request focus for the newly added field
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_focusNodes[index].canRequestFocus) {
-        _focusNodes[index].requestFocus();
-      }
-    });
-
-    // Small delay to let the frame update before scrolling
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (_focusNodes[index].canRequestFocus) _focusNodes[index].requestFocus(); });
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
-        // Approximate calculation: row height is around 68px (padding + TextField)
         double offset = index * 68.0;
-        // Clamp the offset to avoid overscrolling
-        if (offset > _scrollController.position.maxScrollExtent) {
-          offset = _scrollController.position.maxScrollExtent;
-        }
-        _scrollController.animateTo(
-          offset,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (offset > _scrollController.position.maxScrollExtent) offset = _scrollController.position.maxScrollExtent;
+        _scrollController.animateTo(offset, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
       }
     });
   }
@@ -1437,217 +926,41 @@ class _ReviewWordsDialogState extends State<ReviewWordsDialog> {
   Widget build(BuildContext context) {
     final hasSuspicious = _controllers.any((c) => _isWordSuspicious(c.text));
     return AlertDialog(
-      title: const Row(
-        children: [
-          Icon(Icons.spellcheck, color: Colors.pink),
-          SizedBox(width: 10),
-          Text('Review Words'),
+      title: const Row(children: [Icon(Icons.spellcheck, color: Colors.pink), SizedBox(width: 10), Text('Review Words')]),
+      content: SizedBox(width: double.maxFinite, height: 500, child: Column(children: [
+        const Text('Are these words correct? You can edit or remove them.'),
+        if (hasSuspicious) ...[
+          const SizedBox(height: 10),
+          Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.shade300)), child: const Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20), SizedBox(width: 8), Expanded(child: Text('Confirm highlighted words by tapping the green tick before adding.', style: TextStyle(fontSize: 12)))]))
         ],
-      ),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 500,
-        child: Column(
-          children: [
-            const Text('Are these words correct? You can edit or remove them.'),
-            if (hasSuspicious) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange.shade700,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Confirm highlighted words by tapping the green check (tick) before adding to list.',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _controllers.isEmpty
-                        ? const Center(
-                            child: Text('No words found. Try a clearer photo.'),
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            itemCount: _controllers.length,
-                            itemBuilder: (context, index) {
-                              final ctrl = _controllers[index];
-                              final isSuspicious = _isWordSuspicious(ctrl.text);
-                              final isConfirmed = _confirmedControllers
-                                  .contains(ctrl);
-                              // Treat as 'really' suspicious only if it's suspicious and NOT confirmed
-                              final needsAttention =
-                                  isSuspicious && !isConfirmed;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: ctrl,
-                                        focusNode: _focusNodes[index],
-                                        decoration: InputDecoration(
-                                          isDense: true,
-                                          hintText: 'Word ${index + 1}',
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          filled: needsAttention,
-                                          fillColor: needsAttention
-                                              ? Colors.orange.shade50
-                                              : null,
-                                          enabledBorder: needsAttention
-                                              ? OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  borderSide: BorderSide(
-                                                    color:
-                                                        Colors.orange.shade400,
-                                                    width: 1.5,
-                                                  ),
-                                                )
-                                              : null,
-                                          suffixIcon: needsAttention
-                                              ? Tooltip(
-                                                  message:
-                                                      'This word looks unusual — is it correct?',
-                                                  child: Icon(
-                                                    Icons.warning_amber_rounded,
-                                                    color:
-                                                        Colors.orange.shade700,
-                                                  ),
-                                                )
-                                              : (isSuspicious && isConfirmed)
-                                              ? const Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.green,
-                                                  size: 20,
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                    if (needsAttention)
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.done,
-                                          color: Colors.green,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _confirmedControllers.add(ctrl);
-                                          });
-                                        },
-                                        tooltip: 'Confirm word is correct',
-                                      ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.add_circle_outline,
-                                        color: Colors.blueGrey,
-                                      ),
-                                      onPressed: () => _addWordAt(index + 1),
-                                      tooltip: 'Add word after this one',
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          ctrl.dispose();
-                                          _controllers.removeAt(index);
-                                          _focusNodes[index].dispose();
-                                          _focusNodes.removeAt(index);
-                                          _confirmedControllers.remove(ctrl);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => _addWordAt(_controllers.length),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Missing Word'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+        const SizedBox(height: 16),
+        Expanded(child: Column(children: [
+          Expanded(child: _controllers.isEmpty ? const Center(child: Text('No words found.')) : ListView.builder(controller: _scrollController, itemCount: _controllers.length, itemBuilder: (context, index) {
+            final ctrl = _controllers[index];
+            final isSuspicious = _isWordSuspicious(ctrl.text);
+            final isConfirmed = _confirmedControllers.contains(ctrl);
+            final needsAttention = isSuspicious && !isConfirmed;
+            return Padding(padding: const EdgeInsets.only(bottom: 12.0), child: Row(children: [
+              Expanded(child: TextField(controller: ctrl, focusNode: _focusNodes[index], decoration: InputDecoration(isDense: true, hintText: 'Word ${index + 1}', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), filled: needsAttention, fillColor: needsAttention ? Colors.orange.shade50 : null, enabledBorder: needsAttention ? OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.orange.shade400, width: 1.5)) : null, suffixIcon: needsAttention ? Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700) : (isSuspicious && isConfirmed) ? const Icon(Icons.check_circle, color: Colors.green, size: 20) : null))),
+              if (needsAttention) IconButton(icon: const Icon(Icons.done, color: Colors.green), onPressed: () => setState(() => _confirmedControllers.add(ctrl))),
+              IconButton(icon: const Icon(Icons.add_circle_outline, color: Colors.blueGrey), onPressed: () => _addWordAt(index + 1)),
+              IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () { setState(() { ctrl.dispose(); _controllers.removeAt(index); _focusNodes[index].dispose(); _focusNodes.removeAt(index); _confirmedControllers.remove(ctrl); }); }),
+            ]));
+          })),
+          const SizedBox(height: 8),
+          TextButton.icon(onPressed: () => _addWordAt(_controllers.length), icon: const Icon(Icons.add), label: const Text('Add Missing Word')),
+        ]))
+      ])),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            List<String> unconfirmedWords = [];
-            for (var c in _controllers) {
-              if (_isWordSuspicious(c.text) &&
-                  !_confirmedControllers.contains(c)) {
-                unconfirmedWords.add(c.text);
-              }
-            }
-
-            if (unconfirmedWords.isNotEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Please confirm or fix highlighted words first.',
-                  ),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
-              return;
-            }
-
-            List<String> finalWords = [];
-            for (var c in _controllers) {
-              String text = c.text.trim();
-              if (text.isNotEmpty) {
-                // Split by spaces or newlines in case user put 2 words in one box
-                finalWords.addAll(text.split(RegExp(r"\s+")));
-              }
-            }
-            // Pop first to avoid UI feeling 'stuck' or blocked by parent rebuilds
-            Navigator.of(context).pop();
-            widget.onConfirmed(finalWords);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.pink,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Add to List'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () {
+          if (_controllers.any((c) => _isWordSuspicious(c.text) && !_confirmedControllers.contains(c))) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please confirm or fix highlighted words.'), backgroundColor: Colors.redAccent));
+            return;
+          }
+          final words = _controllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+          Navigator.of(context).pop(); widget.onConfirmed(words);
+        }, style: ElevatedButton.styleFrom(backgroundColor: Colors.pink, foregroundColor: Colors.white), child: const Text('Add to List')),
       ],
     );
   }
